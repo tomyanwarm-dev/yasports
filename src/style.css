@@ -52,6 +52,11 @@ body {
   );
 }
 
+.viewport {
+  position: absolute;
+  inset: 0;
+}
+
 .game-canvas {
   display: block;
   width: 100%;

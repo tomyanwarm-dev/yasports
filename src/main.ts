@@ -26,9 +26,15 @@ const pingpong = new PingpongPrototype(game)
 state.onChange((screen) => {
   const inArena = screen === Screen.Badminton
   const inPingpongArena = screen === Screen.Pingpong
-  badminton.setActive(inArena)
-  pingpong.setActive(inPingpongArena)
-  uiLayer.hidden = inArena
+  // Activate only the selected arena: setActive(false) unmounts the shared
+  // stage, so calling it on the other sport would tear down the arena that
+  // was just mounted. Deactivation only happens when leaving to a menu screen.
+  if (inArena) badminton.setActive(true)
+  else if (inPingpongArena) pingpong.setActive(true)
+  else {
+    badminton.setActive(false)
+    pingpong.setActive(false)
+  }
   uiLayer.hidden = inArena || inPingpongArena
 })
 
