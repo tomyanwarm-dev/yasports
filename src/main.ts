@@ -1,6 +1,7 @@
 import './style.css'
 import './menu/menu.css'
 import { BadmintonPrototype } from './badminton/BadmintonPrototype.ts'
+import { PingpongPrototype } from './pingpong/PingpongPrototype.ts'
 import { Game } from './core/Game.ts'
 import { GameState, Screen } from './core/GameState.ts'
 import { MenuManager } from './menu/MenuManager.ts'
@@ -20,11 +21,15 @@ const game = new Game(viewport)
 const state = new GameState()
 export const menu = new MenuManager(uiLayer, state)
 const badminton = new BadmintonPrototype(game)
+const pingpong = new PingpongPrototype(game)
 
 state.onChange((screen) => {
   const inArena = screen === Screen.Badminton
+  const inPingpongArena = screen === Screen.Pingpong
   badminton.setActive(inArena)
+  pingpong.setActive(inPingpongArena)
   uiLayer.hidden = inArena
+  uiLayer.hidden = inArena || inPingpongArena
 })
 
 game.start()

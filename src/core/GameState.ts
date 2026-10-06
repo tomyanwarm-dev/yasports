@@ -4,6 +4,7 @@ export enum Screen {
   Settings = 'settings',
   Playing = 'playing',
   Badminton = 'badminton',
+  Pingpong = 'pingpong',
   Exit = 'exit',
 }
 

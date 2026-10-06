@@ -54,7 +54,7 @@ export class MenuManager {
   /** Entry point for the sport teams: sport picked, then the scene loads. */
   private startSport(sport: Sport): void {
     this.selectedSport = sport
-    this.state.set(sport === 'badminton' ? Screen.Badminton : Screen.Playing)
+    this.state.set(sport === 'badminton' ? Screen.Badminton : Screen.Pingpong)
   }
 
   get sport(): Sport | null {

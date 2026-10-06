@@ -58,7 +58,7 @@ export class SportSelection {
 
     const pingpong = new SportCard({
       label: 'PINGPONG',
-      hint: 'Segera hadir',
+      hint: 'Arena siap',
       icon: PINGPONG_ICON,
       onSelect: () => actions.onSelect('pingpong'),
     })
