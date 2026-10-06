@@ -51,7 +51,7 @@ export class SportSelection {
 
     const badminton = new SportCard({
       label: 'BADMINTON',
-      hint: 'Segera hadir',
+      hint: 'Arena Siap',
       icon: BADMINTON_ICON,
       onSelect: () => actions.onSelect('badminton'),
     })
