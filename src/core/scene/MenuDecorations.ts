@@ -12,6 +12,8 @@ export class MenuDecorations {
   readonly group = new THREE.Group()
   private badminton = new BadmintonProp()
   private pingpong = new PingpongProp()
+  private visible = true
+  private layoutVisible = true
 
   constructor() {
     this.group.add(this.badminton.group, this.pingpong.group)
@@ -24,6 +26,11 @@ export class MenuDecorations {
     })
   }
 
+  setVisible(visible: boolean): void {
+    this.visible = visible
+    this.group.visible = visible && this.layoutVisible
+  }
+
   update(elapsed: number): void {
     this.badminton.update(elapsed)
     this.pingpong.update(elapsed)
@@ -34,12 +41,10 @@ export class MenuDecorations {
    * @param halfWidth visible world half-width at the scene origin
    */
   setLayout(widthPx: number, halfWidth: number): void {
-    if (widthPx < MIN_WIDTH_PX) {
-      this.group.visible = false
-      return
-    }
+    this.layoutVisible = widthPx >= MIN_WIDTH_PX
+    this.group.visible = this.visible && this.layoutVisible
 
-    this.group.visible = true
+    if (!this.layoutVisible) return
     const scale = widthPx < 1280 ? 0.7 : widthPx < 1600 ? 0.82 : 0.92
     const gap = Math.min(4.3, halfWidth * 0.66)
 

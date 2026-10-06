@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import type { Stage } from './Stage.ts'
 import { AmbientParticles } from './scene/AmbientParticles.ts'
 import { MenuDecorations } from './scene/MenuDecorations.ts'
 
@@ -13,6 +14,7 @@ export class Game {
   private particles = new AmbientParticles()
   private shadowPlane: THREE.Mesh
   private elapsed = 0
+  private stage: Stage | null = null
   private frameId = 0
   private running = false
   private parallax = new THREE.Vector2()
@@ -57,6 +59,27 @@ export class Game {
     this.loop()
   }
 
+  /**
+   * Mounts a sport stage (badminton, pingpong) on top of the menu scene.
+   * Pass null to hand rendering back to the menu.
+   */
+  useStage(stage: Stage | null): void {
+    if (stage === this.stage) return
+    this.stage?.exit?.()
+    this.stage = stage
+
+    const menuVisible = stage === null
+    this.backdrop.visible = menuVisible
+    this.shadowPlane.visible = menuVisible
+    this.decorations.setVisible(menuVisible)
+    this.particles.points.visible = menuVisible
+
+    if (stage) {
+      stage.enter?.()
+      this.resize()
+    }
+  }
+
   dispose(): void {
     this.running = false
     cancelAnimationFrame(this.frameId)
@@ -73,8 +96,15 @@ export class Game {
     this.elapsed += delta
 
     this.backdrop.rotation.y += delta * 0.04
-    this.decorations.update(this.elapsed)
     this.particles.update(this.elapsed)
+
+    if (this.stage) {
+      this.stage.update?.(delta, this.elapsed)
+      this.renderer.render(this.stage.scene, this.stage.camera)
+      return
+    }
+
+    this.decorations.update(this.elapsed)
     this.updateParallax(delta)
 
     this.renderer.render(this.scene, this.camera)
@@ -93,6 +123,14 @@ export class Game {
   private resize(): void {
     const { clientWidth, clientHeight } = this.container
     if (clientWidth === 0 || clientHeight === 0) return
+
+    if (this.stage) {
+      this.stage.camera.aspect = clientWidth / clientHeight
+      this.stage.camera.updateProjectionMatrix()
+      this.renderer.setSize(clientWidth, clientHeight)
+      return
+    }
+
     this.camera.aspect = clientWidth / clientHeight
     this.camera.updateProjectionMatrix()
     this.renderer.setSize(clientWidth, clientHeight)

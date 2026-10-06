@@ -3,6 +3,7 @@ export enum Screen {
   SportSelect = 'sport-select',
   Settings = 'settings',
   Playing = 'playing',
+  Badminton = 'badminton',
   Exit = 'exit',
 }
 

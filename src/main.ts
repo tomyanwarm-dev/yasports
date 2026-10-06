@@ -1,7 +1,8 @@
 import './style.css'
 import './menu/menu.css'
+import { BadmintonPrototype } from './badminton/BadmintonPrototype.ts'
 import { Game } from './core/Game.ts'
-import { GameState } from './core/GameState.ts'
+import { GameState, Screen } from './core/GameState.ts'
 import { MenuManager } from './menu/MenuManager.ts'
 
 const root = document.querySelector<HTMLElement>('#app')
@@ -18,5 +19,12 @@ root.append(uiLayer)
 const game = new Game(viewport)
 const state = new GameState()
 export const menu = new MenuManager(uiLayer, state)
+const badminton = new BadmintonPrototype(game)
+
+state.onChange((screen) => {
+  const inArena = screen === Screen.Badminton
+  badminton.setActive(inArena)
+  uiLayer.hidden = inArena
+})
 
 game.start()

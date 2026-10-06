@@ -63,3 +63,7 @@ body {
   inset: 0;
   display: grid;
 }
+
+.ui-layer[hidden] {
+  display: none;
+}
