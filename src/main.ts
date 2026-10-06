@@ -35,7 +35,6 @@ state.onChange((screen) => {
     badminton.setActive(false)
     pingpong.setActive(false)
   }
-  uiLayer.hidden = inArena || inPingpongArena
 })
 
 game.start()

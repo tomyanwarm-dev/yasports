@@ -1,5 +1,6 @@
 import { GameState, Screen } from '../core/GameState.ts'
 import type { Sport } from '../core/Sport.ts'
+import { GameplayOverlay } from './GameplayOverlay.ts'
 import { MainMenu } from './MainMenu.ts'
 import { PlaceholderScreen } from './PlaceholderScreen.ts'
 import { SportSelection } from './SportSelection.ts'
@@ -23,6 +24,13 @@ export class MenuManager {
       onSelect: (sport: Sport) => this.startSport(sport),
       onBack: () => this.goTo(Screen.MainMenu),
     }).element)
+
+    const gameplayOverlay = new GameplayOverlay({
+      onBack: () => this.goTo(Screen.SportSelect),
+    })
+
+    this.register(Screen.Badminton, gameplayOverlay.element)
+    this.register(Screen.Pingpong, gameplayOverlay.element)
 
     this.register(Screen.Playing, new PlaceholderScreen({
       title: 'PLAY',
@@ -64,7 +72,9 @@ export class MenuManager {
   private register(screen: Screen, element: HTMLElement): void {
     element.hidden = true
     this.screens.set(screen, element)
-    this.root.append(element)
+    if (!this.root.contains(element)) {
+      this.root.append(element)
+    }
   }
 
   private show(screen: Screen): void {
