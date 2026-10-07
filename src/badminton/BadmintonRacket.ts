@@ -6,9 +6,14 @@ const HEAD_RY = 0.145
 const SHAFT_LENGTH = 0.25
 const GRIP_LENGTH = 0.13
 
+/** Distance from the racket head down to the middle of the grip. */
+const GRIP_OFFSET = HEAD_RY + SHAFT_LENGTH + GRIP_LENGTH / 2
+
 /**
- * Procedural badminton racket. Kept as its own group so it can later be
- * attached to a hand-tracking controller without touching its geometry.
+ * Procedural badminton racket. The group origin sits at the middle of the grip,
+ * so the racket can be parented straight to a hand: the handle stays in the
+ * palm and the head points along +Y. A hand-tracking controller can then move
+ * one transform and the whole racket follows.
  */
 export class BadmintonRacket {
   readonly group = new THREE.Group()
@@ -16,10 +21,17 @@ export class BadmintonRacket {
 
   constructor() {
     this.head.add(this.createFrame(), this.createStrings())
-    this.group.add(this.head, this.createShaft(), this.createGrip())
 
-    // Stand the racket upright, leaning slightly, ready to be grabbed.
-    this.group.rotation.set(0.2, 0.5, 0.1)
+    const rig = new THREE.Group()
+    rig.name = 'racket-rig'
+    rig.position.y = GRIP_OFFSET
+    rig.add(this.head, this.createShaft(), this.createGrip())
+    this.group.add(rig)
+  }
+
+  /** Total racket length in metres (0.67). */
+  get length(): number {
+    return HEAD_RY * 2 + SHAFT_LENGTH + GRIP_LENGTH
   }
 
   private createFrame(): THREE.Group {

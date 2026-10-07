@@ -7,7 +7,11 @@ import { BadmintonHallLights } from './BadmintonHallLights.ts'
 import { BadmintonNet } from './BadmintonNet.ts'
 import { BadmintonPlayer } from './BadmintonPlayer.ts'
 import { BadmintonPlayerBench } from './BadmintonPlayerBench.ts'
-import { BadmintonRacket } from './BadmintonRacket.ts'
+import {
+  BADMINTON_PLAYER_RED_URL,
+  BADMINTON_PLAYER_URL,
+  BadmintonPlayerModel,
+} from './BadmintonPlayerModel.ts'
 import { BadmintonRefereeChair } from './BadmintonRefereeChair.ts'
 import { BadmintonSignage } from './BadmintonSignage.ts'
 import { Shuttlecock } from './Shuttlecock.ts'
@@ -24,10 +28,12 @@ export class BadmintonArena implements Stage {
 
   readonly court = new BadmintonCourt()
   readonly net = new BadmintonNet()
-  readonly racket = new BadmintonRacket()
   readonly shuttlecock = new Shuttlecock()
-  readonly playerOne = new BadmintonPlayer(0x2563eb)
-  readonly playerTwo = new BadmintonPlayer(0xdc2626)
+
+  /** Placeholder players, shown only while the GLB model is still loading. */
+  private placeholderOne = new BadmintonPlayer(0x2563eb)
+  private placeholderTwo = new BadmintonPlayer(0xdc2626)
+  private modelPlayers: BadmintonPlayerModel[] = []
 
   readonly hall = new BadmintonHall()
   readonly hallLights = new BadmintonHallLights()
@@ -46,12 +52,9 @@ export class BadmintonArena implements Stage {
     this.scene.add(this.createLights())
     this.scene.add(this.hallLights.group)
 
-    this.placePlayer(this.playerOne, -3.6, 0)
-    this.placePlayer(this.playerTwo, 3.6, Math.PI)
-    this.scene.add(this.playerOne.group, this.playerTwo.group)
-
-    this.racket.group.position.set(1.45, 0.5, -2.6)
-    this.scene.add(this.racket.group)
+    this.placePlayer(this.placeholderOne, -0.9, -4.6, 0)
+    this.placePlayer(this.placeholderTwo, 0.9, 4.6, Math.PI)
+    this.scene.add(this.placeholderOne.group, this.placeholderTwo.group)
 
     this.shuttlecock.group.position.set(0, 1.9, -1.4)
     this.scene.add(this.shuttlecock.group)
@@ -66,13 +69,50 @@ export class BadmintonArena implements Stage {
 
     this.camera.position.set(0, 7.2, 13.6)
     this.camera.lookAt(0, 1.1, 0)
+
+    void this.loadModelPlayers()
   }
 
-  /** Prototype only: the scene is static, kept for future gameplay updates. */
-  update(): void {}
+  /** Advances the GLB player animations. */
+  update(_delta: number): void {
+    for (const player of this.modelPlayers) player.update(_delta)
+  }
 
-  private placePlayer(player: BadmintonPlayer, z: number, rotationY: number): void {
-    player.group.position.set(0, 0, z)
+  /** Read-only access to the loaded model players, empty while still loading. */
+  get players(): readonly BadmintonPlayerModel[] {
+    return this.modelPlayers
+  }
+
+  /**
+   * Loads both player variants (blue on the near side, red on the far side).
+   * Placeholders are only removed once both models are in the scene, so a
+   * failed load keeps the arena usable instead of emptying it.
+   */
+  private async loadModelPlayers(): Promise<void> {
+    try {
+      const [blue, red] = await Promise.all([
+        BadmintonPlayerModel.load(BADMINTON_PLAYER_URL),
+        BadmintonPlayerModel.load(BADMINTON_PLAYER_RED_URL),
+      ])
+
+      blue.group.position.set(-0.9, 0, -4.6)
+      red.group.position.set(0.9, 0, 4.6)
+      red.group.rotation.y = Math.PI
+
+      blue.play('Ready')
+      red.play('Ready')
+
+      this.scene.add(blue.group, red.group)
+      this.modelPlayers = [blue, red]
+
+      this.scene.remove(this.placeholderOne.group, this.placeholderTwo.group)
+    } catch (error) {
+      console.error('Gagal memuat model player GLB, memakai player placeholder', error)
+    }
+  }
+
+  private placePlayer(player: BadmintonPlayer, x: number, z: number, rotationY: number): void {
+    player.group.position.set(x, 0, z)
     player.group.rotation.y = rotationY
   }
 
