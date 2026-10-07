@@ -158,9 +158,20 @@ export class PingpongArena implements Stage {
     this.player1Paddle.group.rotation.y = (this.currentPaddlePos.x * 0.15)
     this.player1Paddle.group.rotation.z = -this.currentPaddlePos.x * 0.2
 
-    // Position Player 1 body slightly behind paddle
-    this.player1.group.position.x = THREE.MathUtils.lerp(this.player1.group.position.x, this.currentPaddlePos.x * 0.65, delta * 8)
-    this.player1.setSwingProgress(this.p1SwingProgress)
+    // Manage Player 1 character body visibility & attachment:
+    // In FPP, hide Player 1 torso/head to prevent camera clipping inside head.
+    // In TPP & Broadcast modes, show Player 1 body and attach it naturally behind the paddle.
+    if (this.cameraMode === 'fpp') {
+      this.player1.group.visible = false
+    } else {
+      this.player1.group.visible = true
+      this.player1.group.position.set(
+        this.currentPaddlePos.x * 0.75,
+        0,
+        this.currentPaddlePos.z + 0.58,
+      )
+      this.player1.setSwingProgress(this.p1SwingProgress)
+    }
   }
 
   private updateBallPhysics(delta: number): void {
@@ -299,22 +310,22 @@ export class PingpongArena implements Stage {
     }
 
     if (this.cameraMode === 'tpp') {
-      const targetCamX = this.currentPaddlePos.x * 0.25
-      const targetCamY = 1.95 + (this.currentPaddlePos.y - 0.95) * 0.15
+      const targetCamX = this.currentPaddlePos.x * 0.08
+      const targetCamY = 1.90 + (this.currentPaddlePos.y - 0.95) * 0.08
       this.camera.position.x = THREE.MathUtils.lerp(this.camera.position.x, targetCamX, delta * 4)
       this.camera.position.y = THREE.MathUtils.lerp(this.camera.position.y, targetCamY, delta * 4)
       this.camera.position.z = THREE.MathUtils.lerp(this.camera.position.z, 3.15, delta * 4)
-      this.camera.lookAt(this.ball.position.x * 0.1, 0.75, -0.50)
+      this.camera.lookAt(this.ball.position.x * 0.08, 0.75, -0.50)
       return
     }
 
-    // Default FPP mode
-    const targetCamX = this.currentPaddlePos.x * 0.18
-    const targetCamY = 1.30 + (this.currentPaddlePos.y - 0.95) * 0.12
+    // Default FPP mode (Stable & clear 1st-person view)
+    const targetCamX = this.currentPaddlePos.x * 0.05
+    const targetCamY = 1.30 + (this.currentPaddlePos.y - 0.95) * 0.05
     this.camera.position.x = THREE.MathUtils.lerp(this.camera.position.x, targetCamX, delta * 4)
     this.camera.position.y = THREE.MathUtils.lerp(this.camera.position.y, targetCamY, delta * 4)
     this.camera.position.z = THREE.MathUtils.lerp(this.camera.position.z, 2.30, delta * 4)
-    this.camera.lookAt(this.ball.position.x * 0.1, 0.82, -0.60)
+    this.camera.lookAt(this.ball.position.x * 0.05, 0.82, -0.60)
   }
 
   private updateAnimations(_delta: number): void {
