@@ -5,6 +5,7 @@ import { PingpongNet } from './PingpongNet.ts'
 import { PingpongPaddle } from './PingpongPaddle.ts'
 import { PingpongPlayer } from './PingpongPlayer.ts'
 import { PingpongTable, TABLE_HEIGHT, TABLE_LENGTH, TABLE_WIDTH } from './PingpongTable.ts'
+import { PingpongScore, type Server, type ScoreState } from './PingpongScore.ts'
 
 export interface ArenaCollider {
   name: 'floor' | 'wall' | 'table' | 'net'
@@ -38,8 +39,11 @@ export class PingpongArena implements Stage {
   private serveState: 'serving' | 'rally' | 'scored' = 'serving'
   private resetTimer = 0
   private cameraMode: 'fpp' | 'tpp' | 'broadcast' = 'fpp'
+  private score: PingpongScore
+  private scoreHUD: HTMLElement | null = null
+  private scoreHudOpacityTimer: number | null = null
 
-  // Input & Paddle position
+  // Input & Paddle position (+ batas area meja/net & koreksi rotasi stabil)
   private targetPaddlePos = new THREE.Vector3(0, 0.95, 1.30)
   private currentPaddlePos = new THREE.Vector3(0, 0.95, 1.30)
   private paddleVelocity = new THREE.Vector3()
@@ -47,6 +51,12 @@ export class PingpongArena implements Stage {
   private swingTimer = 0
   private p1SwingProgress = 0
   private p2SwingProgress = 0
+  private readonly p1Bounds = PingpongPaddle.getDefaultBounds('player1')
+  private readonly p1RotLimits = PingpongPaddle.getDefaultRotationLimits('player1')
+  private readonly p2Bounds = PingpongPaddle.getDefaultBounds('player2')
+  private readonly p2RotLimits = PingpongPaddle.getDefaultRotationLimits('player2')
+  private readonly desiredP1Rot = new THREE.Euler(0, 0, 0, 'XYZ')
+  private readonly desiredP2Rot = new THREE.Euler(Math.PI, Math.PI, 0, 'XYZ')
 
   // Event listener references for clean teardown
   private onPointerMove = (e: PointerEvent) => this.handlePointerMove(e)
@@ -59,6 +69,13 @@ export class PingpongArena implements Stage {
   constructor() {
     this.scene.background = new THREE.Color(0x071520)
     this.scene.fog = new THREE.Fog(0x071520, 18, 38)
+
+    // Initialize scoring system
+    this.score = new PingpongScore({
+      onScoreChange: (state) => this.updateScoreHUD(state),
+      onGameOver: (winner) => this.handleGameOver(winner),
+      onServeChange: (server) => this.updateServeIndicator(server),
+    })
 
     // Build environment
     this.scene.add(
@@ -93,7 +110,8 @@ export class PingpongArena implements Stage {
     window.addEventListener('pointerdown', this.onPointerDown)
     window.addEventListener('keydown', this.onKeyDown)
     this.createHUD()
-    this.resetServe('player1')
+    this.createScoreHUD()
+    this.resetServe(this.score.getServer())
   }
 
   exit(): void {
@@ -101,6 +119,7 @@ export class PingpongArena implements Stage {
     window.removeEventListener('pointerdown', this.onPointerDown)
     window.removeEventListener('keydown', this.onKeyDown)
     this.destroyHUD()
+    this.destroyScoreHUD()
   }
 
   update(delta: number): void {
@@ -115,9 +134,10 @@ export class PingpongArena implements Stage {
     const normX = (event.clientX / window.innerWidth) * 2 - 1
     const normY = (event.clientY / window.innerHeight) * 2 - 1
 
-    // Map screen cursor to 3D workspace in front of camera
-    this.targetPaddlePos.x = THREE.MathUtils.clamp(normX * 1.15, -1.10, 1.10)
-    this.targetPaddlePos.y = THREE.MathUtils.clamp(0.76 + (1 - normY) * 0.52, 0.76, 1.35)
+    // Map screen cursor / gesture point to 3D workspace, lalu batasi agar tidak tembus meja/net.
+    this.targetPaddlePos.x = THREE.MathUtils.clamp(normX * 1.05, -1.05, 1.05)
+    this.targetPaddlePos.y = THREE.MathUtils.clamp(0.95 + (1 - normY) * 0.45, 0.95, 1.45)
+    PingpongPaddle.constrainPosition(this.targetPaddlePos, this.p1Bounds, this.player1Paddle.radius)
   }
 
   private triggerSwing(): void {
@@ -143,20 +163,27 @@ export class PingpongArena implements Stage {
 
     const prevPos = this.currentPaddlePos.clone()
     this.targetPaddlePos.z = zOffset
+    PingpongPaddle.constrainPosition(this.targetPaddlePos, this.p1Bounds, this.player1Paddle.radius)
 
     // Smooth movement lerp
     this.currentPaddlePos.x = THREE.MathUtils.lerp(this.currentPaddlePos.x, this.targetPaddlePos.x, delta * 24)
     this.currentPaddlePos.y = THREE.MathUtils.lerp(this.currentPaddlePos.y, this.targetPaddlePos.y, delta * 24)
     this.currentPaddlePos.z = THREE.MathUtils.lerp(this.currentPaddlePos.z, this.targetPaddlePos.z, delta * 24)
 
-    // Calculate paddle velocity vector
+    // Collision boundary akhir: cegah blade menembus meja/net (termasuk input gesture tidak stabil)
+    PingpongPaddle.constrainPosition(this.currentPaddlePos, this.p1Bounds, this.player1Paddle.radius)
+
+    // Velocity dari posisi yang sudah ter-constraint
     this.paddleVelocity.subVectors(this.currentPaddlePos, prevPos).divideScalar(Math.max(delta, 0.001))
 
-    // Position Player 1 paddle
+    // Orientasi diinginkan (dapat diganti orientasi tangan dari gesture) -> dikunci Euler + di-Lerp
+    this.desiredP1Rot.set(
+      -0.15 - this.p1SwingProgress * 0.4,
+      this.currentPaddlePos.x * 0.12,
+      -this.currentPaddlePos.x * 0.18,
+    )
     this.player1Paddle.group.position.copy(this.currentPaddlePos)
-    this.player1Paddle.group.rotation.x = -0.15 - this.p1SwingProgress * 0.4
-    this.player1Paddle.group.rotation.y = (this.currentPaddlePos.x * 0.15)
-    this.player1Paddle.group.rotation.z = -this.currentPaddlePos.x * 0.2
+    this.player1Paddle.applyStableRotation(this.desiredP1Rot, delta, this.p1RotLimits, 16)
 
     // Manage Player 1 character body visibility & attachment:
     // In FPP, hide Player 1 torso/head to prevent camera clipping inside head.
@@ -177,8 +204,15 @@ export class PingpongArena implements Stage {
   private updateBallPhysics(delta: number): void {
     if (this.serveState === 'serving') {
       // Ball stays suspended near server until hit/served
+      const server = this.score.getServer()
       const serveHeight = 0.95 + Math.sin(Date.now() * 0.005) * 0.04
-      this.ball.position.set(this.currentPaddlePos.x * 0.5, serveHeight, 1.15)
+
+      if (server === 'player1') {
+        this.ball.position.set(this.currentPaddlePos.x * 0.5, serveHeight, 1.15)
+      } else {
+        // NPC serve position
+        this.ball.position.set((Math.random() - 0.5) * 0.3, serveHeight, -1.15)
+      }
       this.ball.mesh.position.copy(this.ball.position)
       this.ball.shadowDot.position.set(this.ball.position.x, 0.762, this.ball.position.z)
       return
@@ -187,7 +221,7 @@ export class PingpongArena implements Stage {
     if (this.serveState === 'scored') {
       this.resetTimer -= delta
       if (this.resetTimer <= 0) {
-        this.resetServe('player1')
+        this.resetServe(this.score.getServer())
       }
       this.ball.update(delta)
       return
@@ -274,12 +308,15 @@ export class PingpongArena implements Stage {
   private updateNPC(delta: number): void {
     // NPC AI moves toward ball position when ball is coming to NPC side
     const targetX = this.ball.velocity.z < 0 ? THREE.MathUtils.clamp(this.ball.position.x, -1.0, 1.0) : 0
-    const targetY = this.ball.velocity.z < 0 ? THREE.MathUtils.clamp(this.ball.position.y, 0.78, 1.30) : 0.95
+    const targetY = this.ball.velocity.z < 0 ? THREE.MathUtils.clamp(this.ball.position.y, 0.95, 1.30) : 0.98
 
     const npcPos = this.player2Paddle.group.position
     npcPos.x = THREE.MathUtils.lerp(npcPos.x, targetX, delta * 7)
     npcPos.y = THREE.MathUtils.lerp(npcPos.y, targetY, delta * 7)
     npcPos.z = -1.35
+
+    // Batas area/net/meja: cegah NPC paddle menembus permukaan meja atau melewati net
+    PingpongPaddle.constrainPosition(npcPos, this.p2Bounds, this.player2Paddle.radius)
 
     // NPC character body follows paddle
     this.player2.group.position.x = THREE.MathUtils.lerp(this.player2.group.position.x, npcPos.x * 0.75, delta * 6)
@@ -290,9 +327,13 @@ export class PingpongArena implements Stage {
     }
     this.player2.setSwingProgress(this.p2SwingProgress)
 
-    // NPC Paddle rotation
-    this.player2Paddle.group.rotation.x = Math.PI + 0.15 + this.p2SwingProgress * 0.4
-    this.player2Paddle.group.rotation.y = Math.PI - npcPos.x * 0.15
+    // Rotasi NPC terkunci + smoothing (menghadap P1/lapangan, tidak terbalik/jungkir balik)
+    this.desiredP2Rot.set(
+      0.18 + this.p2SwingProgress * 0.35,
+      Math.PI - npcPos.x * 0.12,
+      npcPos.x * 0.08,
+    )
+    this.player2Paddle.applyStableRotation(this.desiredP2Rot, delta, this.p2RotLimits, 14)
   }
 
   private toggleCameraMode(): void {
@@ -336,18 +377,39 @@ export class PingpongArena implements Stage {
     this.serveState = 'rally'
     this.rallyCount = 0
     this.updateHUD()
+    this.updateScoreHUD(this.score.getState())
 
-    const vx = (this.currentPaddlePos.x - 0) * 0.8 + (Math.random() - 0.5) * 0.3
-    this.ball.reset(
-      new THREE.Vector3(this.currentPaddlePos.x * 0.4, 0.98, 1.15),
-      new THREE.Vector3(vx, 2.1, -4.2),
-    )
-    this.triggerSwing()
+    const server = this.score.getServer()
+
+    if (server === 'player1') {
+      // Player 1 serves - ball positioned near player 1 paddle
+      const vx = (this.currentPaddlePos.x - 0) * 0.8 + (Math.random() - 0.5) * 0.3
+      this.ball.reset(
+        new THREE.Vector3(this.currentPaddlePos.x * 0.4, 0.98, 1.15),
+        new THREE.Vector3(vx, 2.1, -4.2),
+      )
+      this.triggerSwing()
+    } else {
+      // Player 2 (NPC) serves - auto serve from NPC side toward player 1
+      const vx = (Math.random() - 0.5) * 1.5
+      this.ball.reset(
+        new THREE.Vector3((Math.random() - 0.5) * 0.5, 0.98, -1.15),
+        new THREE.Vector3(vx, 2.1, 4.2),
+      )
+      // NPC serves automatically after a brief delay
+      setTimeout(() => {
+        if (this.serveState === 'rally') {
+          this.p2SwingProgress = 1.0
+          setTimeout(() => { this.p2SwingProgress = 0 }, 200)
+        }
+      }, 500)
+    }
   }
 
-  private resetServe(_server: 'player1' | 'player2'): void {
+  private resetServe(_server: Server): void {
     this.serveState = 'serving'
-    this.updateHUD('CLICK OR PRESS SPACE TO SERVE!')
+    this.updateHUD('KLIK ATAU TEKAN SPACE UNTUK SERVE!')
+    this.updateScoreHUD(this.score.getState())
   }
 
   private handleRallyEnd(): void {
@@ -359,7 +421,35 @@ export class PingpongArena implements Stage {
       this.maxRallyCount = this.rallyCount
     }
 
-    const msg = this.rallyCount > 0 ? `RALLY ENDED! HITS: ${this.rallyCount}` : `OUT OF BOUNDS!`
+    // Determine who won the point
+    // If ball was last hit by player1 and went out on player1's side or net, player2 gets point
+    // If ball was last hit by player2 and went out on player2's side or net, player1 gets point
+    // If ball hits floor on player1's side (z > 0) without being returned, player2 gets point
+    // If ball hits floor on player2's side (z < 0) without being returned, player1 gets point
+    let pointWinner: Server = 'player1'
+
+    if (this.ball.lastHitBy === 'player1') {
+      // Player 1 hit it last - if it went out on player 1's side or hit net, player 2 wins
+      if (this.ball.position.z > 0 || Math.abs(this.ball.position.z) < 0.05) {
+        pointWinner = 'player2'
+      } else {
+        pointWinner = 'player1'
+      }
+    } else if (this.ball.lastHitBy === 'player2') {
+      // Player 2 hit it last - if it went out on player 2's side or hit net, player 1 wins
+      if (this.ball.position.z < 0 || Math.abs(this.ball.position.z) < 0.05) {
+        pointWinner = 'player1'
+      } else {
+        pointWinner = 'player2'
+      }
+    } else {
+      // No one hit it (serve fault) - determine by ball position
+      pointWinner = this.ball.position.z > 0 ? 'player2' : 'player1'
+    }
+
+    this.score.awardPoint(pointWinner)
+
+    const msg = this.rallyCount > 0 ? `RALLY BERAKHIR! TOUCH: ${this.rallyCount}` : `DI LUAR AREA!`
     this.updateHUD(msg)
   }
 
@@ -488,6 +578,254 @@ export class PingpongArena implements Stage {
     if (this.hudElement) {
       this.hudElement.remove()
       this.hudElement = null
+    }
+  }
+
+  // --- Score HUD ---
+  private createScoreHUD(): void {
+    this.scoreHUD = document.createElement('div')
+    this.scoreHUD.className = 'pingpong-score-hud'
+    this.scoreHUD.style.cssText = `
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 20;
+      font-family: system-ui, -apple-system, sans-serif;
+    `
+    // Skor ditempatkan di sudut kiri/kanan paling atas (zona aman gestur tangan),
+    // dengan opacity dasar 50% dan naik ke 80% saat skor bertambah.
+    this.scoreHUD.innerHTML = `
+      <div id="pp-score-left" class="pp-score-badge" style="
+        position: absolute;
+        top: max(8px, env(safe-area-inset-top));
+        left: max(10px, env(safe-area-inset-left));
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 2px;
+        padding: 6px 10px;
+        background: rgba(15, 23, 42, 0.55);
+        border: 1px solid rgba(56, 189, 248, 0.25);
+        border-radius: 10px;
+        backdrop-filter: blur(6px);
+        opacity: 0.5;
+        transition: opacity 0.25s ease;
+      ">
+        <div style="font-size: 0.58rem; font-weight: 800; letter-spacing: 0.12em; color: #94a3b8; text-transform: uppercase;">ANDA</div>
+        <div style="display: flex; align-items: baseline; gap: 8px;">
+          <div id="pp-p1-score" style="font-size: 2rem; font-weight: 900; font-variant-numeric: tabular-nums; color: #f8fafc; line-height: 1; text-shadow: 0 0 12px rgba(56, 189, 248, 0.35);">0</div>
+          <div id="pp-p1-serve" style="display: inline-flex; align-items: center; gap: 3px; font-size: 0.56rem; font-weight: 800; letter-spacing: 0.08em; color: #38bdf8; opacity: 0; transition: opacity 0.25s ease;">
+            <span style="width: 6px; height: 6px; border-radius: 50%; background: #38bdf8; box-shadow: 0 0 6px #38bdf8; animation: pp-serve-pulse 1.5s ease-in-out infinite;"></span>
+            <span>SERVE</span>
+          </div>
+        </div>
+      </div>
+
+      <div id="pp-score-right" class="pp-score-badge" style="
+        position: absolute;
+        top: max(8px, env(safe-area-inset-top));
+        right: max(10px, env(safe-area-inset-right));
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 2px;
+        padding: 6px 10px;
+        background: rgba(15, 23, 42, 0.55);
+        border: 1px solid rgba(239, 68, 68, 0.22);
+        border-radius: 10px;
+        backdrop-filter: blur(6px);
+        opacity: 0.5;
+        transition: opacity 0.25s ease;
+      ">
+        <div style="font-size: 0.58rem; font-weight: 800; letter-spacing: 0.12em; color: #94a3b8; text-transform: uppercase;">MUSUH</div>
+        <div style="display: flex; align-items: baseline; gap: 8px; flex-direction: row-reverse;">
+          <div id="pp-p2-score" style="font-size: 2rem; font-weight: 900; font-variant-numeric: tabular-nums; color: #f8fafc; line-height: 1; text-shadow: 0 0 12px rgba(239, 68, 68, 0.3);">0</div>
+          <div id="pp-p2-serve" style="display: inline-flex; align-items: center; gap: 3px; font-size: 0.56rem; font-weight: 800; letter-spacing: 0.08em; color: #ef4444; opacity: 0; transition: opacity 0.25s ease;">
+            <span style="width: 6px; height: 6px; border-radius: 50%; background: #ef4444; box-shadow: 0 0 6px #ef4444; animation: pp-serve-pulse 1.5s ease-in-out infinite;"></span>
+            <span>SERVE</span>
+          </div>
+        </div>
+      </div>
+
+      <div id="pp-game-status" style="
+        display: none;
+        position: absolute;
+        top: max(8px, env(safe-area-inset-top));
+        left: 50%;
+        transform: translateX(-50%);
+        max-width: calc(100% - 220px);
+        padding: 4px 10px;
+        font-size: 0.62rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        color: #cbd5e1;
+        text-align: center;
+        background: rgba(15, 23, 42, 0.35);
+        border: 1px solid rgba(148, 163, 184, 0.15);
+        border-radius: 999px;
+        backdrop-filter: blur(4px);
+        opacity: 0.5;
+        transition: opacity 0.25s ease;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      "></div>
+
+      <button id="pp-restart-btn" type="button" style="
+        display: none;
+        position: absolute;
+        top: calc(max(8px, env(safe-area-inset-top)) + 34px);
+        left: 50%;
+        transform: translateX(-50%);
+        background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+        border: none;
+        color: #f8fafc;
+        font-weight: 800;
+        font-size: 0.72rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        padding: 8px 18px;
+        border-radius: 999px;
+        cursor: pointer;
+        box-shadow: 0 6px 20px rgba(37, 99, 235, 0.45);
+        pointer-events: auto;
+        opacity: 0.85;
+      ">MAIN LAGI</button>
+
+      <style>
+        @keyframes pp-serve-pulse {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.5; transform: scale(0.85); }
+        }
+        @keyframes pp-score-pop {
+          0% { transform: scale(1); }
+          50% { transform: scale(1.15); }
+          100% { transform: scale(1); }
+        }
+        .pp-score-pop { animation: pp-score-pop 0.28s ease; }
+      </style>
+    `
+
+    const root = document.querySelector('.viewport') || document.body
+    root.appendChild(this.scoreHUD)
+
+    // Add restart button handler
+    const restartBtn = this.scoreHUD.querySelector('#pp-restart-btn')
+    if (restartBtn) {
+      restartBtn.addEventListener('click', (e) => {
+        e.stopPropagation()
+        this.restartMatch()
+      })
+    }
+  }
+
+  private updateScoreHUD(state: ScoreState): void {
+    if (!this.scoreHUD) return
+
+    const p1ScoreEl = this.scoreHUD.querySelector('#pp-p1-score')
+    const p2ScoreEl = this.scoreHUD.querySelector('#pp-p2-score')
+    const p1ServeEl = this.scoreHUD.querySelector('#pp-p1-serve')
+    const p2ServeEl = this.scoreHUD.querySelector('#pp-p2-serve')
+    const statusEl = this.scoreHUD.querySelector('#pp-game-status') as HTMLElement | null
+    const restartBtn = this.scoreHUD.querySelector('#pp-restart-btn') as HTMLElement | null
+    const leftBadge = this.scoreHUD.querySelector('#pp-score-left') as HTMLElement | null
+    const rightBadge = this.scoreHUD.querySelector('#pp-score-right') as HTMLElement | null
+
+    // Opacity: 50% idle, naik ke 80% saat ada pembaruan skor, lalu kembali ke 50%.
+    // Saat game over dipertahankan 80% agar hasil akhir tetap terbaca.
+    const setOpacity = (value: string) => {
+      if (leftBadge) leftBadge.style.opacity = value
+      if (rightBadge) rightBadge.style.opacity = value
+      if (statusEl) statusEl.style.opacity = value
+    }
+    if (this.scoreHudOpacityTimer) {
+      window.clearTimeout(this.scoreHudOpacityTimer)
+      this.scoreHudOpacityTimer = null
+    }
+    if (state.gameState === 'gameOver') {
+      setOpacity('0.8')
+    } else {
+      setOpacity('0.8')
+      this.scoreHudOpacityTimer = window.setTimeout(() => {
+        setOpacity('0.5')
+        this.scoreHudOpacityTimer = null
+      }, 900)
+    }
+
+    // Update skor + animasi pop (font proporsional, tetap terbaca)
+    if (p1ScoreEl) {
+      p1ScoreEl.textContent = `${state.player1Score}`
+      p1ScoreEl.classList.remove('pp-score-pop')
+      void (p1ScoreEl as HTMLElement).offsetWidth
+      p1ScoreEl.classList.add('pp-score-pop')
+    }
+    if (p2ScoreEl) {
+      p2ScoreEl.textContent = `${state.player2Score}`
+      p2ScoreEl.classList.remove('pp-score-pop')
+      void (p2ScoreEl as HTMLElement).offsetWidth
+      p2ScoreEl.classList.add('pp-score-pop')
+    }
+
+    // Indikator server (kompak, di dalam badge sudut)
+    if (p1ServeEl && p2ServeEl) {
+      const p1Serve = p1ServeEl as HTMLElement
+      const p2Serve = p2ServeEl as HTMLElement
+      if (state.server === 'player1') {
+        p1Serve.style.opacity = '1'
+        p2Serve.style.opacity = '0'
+      } else {
+        p1Serve.style.opacity = '0'
+        p2Serve.style.opacity = '1'
+      }
+    }
+
+    // Status ringkas di tepi atas (bukan tengah layar) agar lintasan bola tetap bersih
+    if (statusEl) {
+      if (state.gameState === 'gameOver') {
+        const winnerText = state.winner === 'player1' ? 'ANDA MENANG' : 'MUSUH MENANG'
+        const winnerColor = state.winner === 'player1' ? '#7dd3fc' : '#fca5a5'
+        statusEl.style.display = 'block'
+        statusEl.innerHTML = `<span style="color: ${winnerColor}; font-weight: 800;">${winnerText}</span>`
+        if (restartBtn) restartBtn.style.display = 'block'
+      } else if (this.score.isDeuce()) {
+        statusEl.style.display = 'block'
+        statusEl.innerHTML = `<span style="color: #fcd34d;">DEUCE • MENANG 2</span>`
+        if (restartBtn) restartBtn.style.display = 'none'
+      } else {
+        // Saat normal, status disembunyikan agar area pandang tetap minim distraksi
+        statusEl.style.display = 'none'
+        statusEl.innerHTML = ''
+        if (restartBtn) restartBtn.style.display = 'none'
+      }
+    }
+  }
+
+  private updateServeIndicator(server: Server): void {
+    // Handled in updateScoreHUD via onScoreChange callback
+    this.updateScoreHUD(this.score.getState())
+  }
+
+  private handleGameOver(winner: Server): void {
+    this.updateHUD(winner === 'player1' ? 'SELAMAT! ANDA MENANG GIM INI! 🏆' : 'MUSUH MENANG GIM INI!')
+    this.updateScoreHUD(this.score.getState())
+  }
+
+  private restartMatch(): void {
+    this.score.reset()
+    this.maxRallyCount = 0
+    this.resetServe(this.score.getServer())
+    this.updateHUD()
+    this.updateScoreHUD(this.score.getState())
+  }
+
+  private destroyScoreHUD(): void {
+    if (this.scoreHudOpacityTimer) {
+      window.clearTimeout(this.scoreHudOpacityTimer)
+      this.scoreHudOpacityTimer = null
+    }
+    if (this.scoreHUD) {
+      this.scoreHUD.remove()
+      this.scoreHUD = null
     }
   }
 

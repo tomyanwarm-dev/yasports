@@ -8,7 +8,7 @@ export class Game {
   readonly camera: THREE.PerspectiveCamera
 
   private renderer: THREE.WebGLRenderer
-  private clock = new THREE.Clock()
+  private timer = new THREE.Timer()
   private backdrop: THREE.Object3D
   private decorations = new MenuDecorations()
   private particles = new AmbientParticles()
@@ -31,7 +31,7 @@ export class Game {
     this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
     this.renderer.shadowMap.enabled = true
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap
+    this.renderer.shadowMap.type = THREE.PCFShadowMap
     this.renderer.domElement.classList.add('game-canvas')
     this.container.append(this.renderer.domElement)
 
@@ -55,8 +55,9 @@ export class Game {
   start(): void {
     if (this.running) return
     this.running = true
-    this.clock.start()
-    this.loop()
+    this.timer.connect(document)
+    this.timer.reset()
+    this.loop(performance.now())
   }
 
   /**
@@ -83,16 +84,18 @@ export class Game {
   dispose(): void {
     this.running = false
     cancelAnimationFrame(this.frameId)
+    this.timer.dispose()
     window.removeEventListener('resize', this.onResize)
     window.removeEventListener('pointermove', this.onPointerMove)
     this.renderer.dispose()
     this.renderer.domElement.remove()
   }
 
-  private loop = (): void => {
+  private loop = (timestamp: number): void => {
     if (!this.running) return
     this.frameId = requestAnimationFrame(this.loop)
-    const delta = this.clock.getDelta()
+    this.timer.update(timestamp)
+    const delta = this.timer.getDelta()
     this.elapsed += delta
 
     this.backdrop.rotation.y += delta * 0.04

@@ -224,9 +224,12 @@
 
 /* Gameplay HUD / Overlay screen */
 .screen--gameplay {
-  place-items: start start;
+  /* Pindah ke kiri bawah agar tidak menutupi badge skor di sudut atas */
+  place-items: end start;
   pointer-events: none;
   padding: 24px;
+  padding-bottom: max(24px, env(safe-area-inset-bottom));
+  padding-left: max(24px, env(safe-area-inset-left));
   z-index: 10;
 }
 
