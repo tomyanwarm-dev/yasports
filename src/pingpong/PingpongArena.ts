@@ -38,14 +38,14 @@ export class PingpongArena implements Stage {
   private maxRallyCount = 0
   private serveState: 'serving' | 'rally' | 'scored' = 'serving'
   private resetTimer = 0
-  private cameraMode: 'fpp' | 'tpp' | 'broadcast' = 'fpp'
+  private cameraMode: 'pov' | 'main' = 'pov'
   private score: PingpongScore
   private scoreHUD: HTMLElement | null = null
   private scoreHudOpacityTimer: number | null = null
 
   // Input & Paddle position (+ batas area meja/net & koreksi rotasi stabil)
-  private targetPaddlePos = new THREE.Vector3(0, 0.95, 1.30)
-  private currentPaddlePos = new THREE.Vector3(0, 0.95, 1.30)
+  private targetPaddlePos = new THREE.Vector3(0, 0.95, 1.58)
+  private currentPaddlePos = new THREE.Vector3(0, 0.95, 1.58)
   private paddleVelocity = new THREE.Vector3()
   private isSwinging = false
   private swingTimer = 0
@@ -70,18 +70,21 @@ export class PingpongArena implements Stage {
     this.scene.background = new THREE.Color(0x071520)
     this.scene.fog = new THREE.Fog(0x071520, 18, 38)
 
-    // Initialize scoring system
+    // Initialize scoring system (ITTF: 11 poin, deuce 10-10 selisih 2, servis tiap 2 poin/1 saat deuce, best-of set)
     this.score = new PingpongScore({
-      onScoreChange: (state) => this.updateScoreHUD(state),
-      onGameOver: (winner) => this.handleGameOver(winner),
-      onServeChange: (server) => this.updateServeIndicator(server),
+      bestOf: 5, // ubah ke 3 atau 7 untuk best-of-3 / best-of-7
+      startingServer: 'player1',
+      callbacks: {
+        onScoreChange: (state) => this.updateScoreHUD(state),
+        onGameOver: (winner) => this.handleGameOver(winner),
+        onServeChange: (server) => this.updateServeIndicator(server),
+      },
     })
 
     // Build environment
     this.scene.add(
       this.createHall(),
       this.table.group,
-      this.net.group,
       this.createDecorations(),
       this.createLights(),
     )
@@ -96,16 +99,19 @@ export class PingpongArena implements Stage {
     // Initial positions
     this.player1.group.position.set(0, 0, 2.15)
     this.player2.group.position.set(0, 0, -1.95)
-    this.player2Paddle.group.position.set(0, 0.92, -1.35)
+    this.player1Paddle.group.position.set(0, 0.95, 1.58)
+    this.player2Paddle.group.position.set(0, 0.92, -1.58)
 
     this.createColliders()
 
-    // FPP / Close TPP camera behind Player 1 looking at table
-    this.camera.position.set(0, 1.32, 2.30)
-    this.camera.lookAt(0, 0.82, -0.60)
+    // POV: pengalaman bermain utama (first-person, agak mundur agar pandangan leluasa)
+    this.camera.position.set(0, 1.34, 2.28)
+    this.camera.lookAt(0, 0.82, -0.40)
   }
 
   enter(): void {
+    // Saat pertandingan dimulai/dimount, selalu gunakan POV sebagai kamera utama
+    this.cameraMode = 'pov'
     window.addEventListener('pointermove', this.onPointerMove)
     window.addEventListener('pointerdown', this.onPointerDown)
     window.addEventListener('keydown', this.onKeyDown)
@@ -151,11 +157,11 @@ export class PingpongArena implements Stage {
 
   private updatePlayer1Input(delta: number): void {
     // Handle swing timer & forward impulse
-    let zOffset = 1.30
+    let zOffset = 1.58
     if (this.swingTimer > 0) {
       this.swingTimer -= delta
       this.p1SwingProgress = Math.sin((0.22 - this.swingTimer) / 0.22 * Math.PI)
-      zOffset = 1.30 - this.p1SwingProgress * 0.22
+      zOffset = 1.58 - this.p1SwingProgress * 0.22
     } else {
       this.isSwinging = false
       this.p1SwingProgress = THREE.MathUtils.lerp(this.p1SwingProgress, 0, delta * 10)
@@ -185,20 +191,15 @@ export class PingpongArena implements Stage {
     this.player1Paddle.group.position.copy(this.currentPaddlePos)
     this.player1Paddle.applyStableRotation(this.desiredP1Rot, delta, this.p1RotLimits, 16)
 
-    // Manage Player 1 character body visibility & attachment:
-    // In FPP, hide Player 1 torso/head to prevent camera clipping inside head.
-    // In TPP & Broadcast modes, show Player 1 body and attach it naturally behind the paddle.
-    if (this.cameraMode === 'fpp') {
-      this.player1.group.visible = false
-    } else {
-      this.player1.group.visible = true
-      this.player1.group.position.set(
-        this.currentPaddlePos.x * 0.75,
-        0,
-        this.currentPaddlePos.z + 0.58,
-      )
-      this.player1.setSwingProgress(this.p1SwingProgress)
-    }
+    // Sembunyikan tubuh kedua pemain agar tidak menutupi bola/sudut pandang saat bermain.
+    this.player1.group.visible = false
+    this.player2.group.visible = false
+    this.player1.group.position.set(
+      this.currentPaddlePos.x * 0.75,
+      0,
+      this.currentPaddlePos.z + 0.58,
+    )
+    this.player1.setSwingProgress(this.p1SwingProgress)
   }
 
   private updateBallPhysics(delta: number): void {
@@ -208,10 +209,10 @@ export class PingpongArena implements Stage {
       const serveHeight = 0.95 + Math.sin(Date.now() * 0.005) * 0.04
 
       if (server === 'player1') {
-        this.ball.position.set(this.currentPaddlePos.x * 0.5, serveHeight, 1.15)
+        this.ball.position.set(this.currentPaddlePos.x * 0.5, serveHeight, 1.35)
       } else {
         // NPC serve position
-        this.ball.position.set((Math.random() - 0.5) * 0.3, serveHeight, -1.15)
+        this.ball.position.set((Math.random() - 0.5) * 0.3, serveHeight, -1.35)
       }
       this.ball.mesh.position.copy(this.ball.position)
       this.ball.shadowDot.position.set(this.ball.position.x, 0.762, this.ball.position.z)
@@ -263,7 +264,7 @@ export class PingpongArena implements Stage {
     }
 
     // --- Player 1 Paddle Collision ---
-    if (this.ball.position.z > 0.4 && this.ball.position.z < 1.55 && this.ball.velocity.z > 0) {
+    if (this.ball.position.z > 0.4 && this.ball.position.z < 1.95 && this.ball.velocity.z > 0) {
       const dist = this.ball.position.distanceTo(this.player1Paddle.group.position)
       if (dist < 0.22) {
         // Hit by Player 1!
@@ -282,7 +283,7 @@ export class PingpongArena implements Stage {
     }
 
     // --- Player 2 (NPC) Paddle Collision ---
-    if (this.ball.position.z < -0.4 && this.ball.position.z > -1.65 && this.ball.velocity.z < 0) {
+    if (this.ball.position.z < -0.4 && this.ball.position.z > -1.95 && this.ball.velocity.z < 0) {
       const dist = this.ball.position.distanceTo(this.player2Paddle.group.position)
       if (dist < 0.24) {
         // Hit by Player 2 (NPC)!
@@ -293,7 +294,7 @@ export class PingpongArena implements Stage {
         this.ball.velocity.y = 2.1 + Math.random() * 0.4
         this.ball.velocity.x = (Math.random() - 0.5) * 1.2 - this.ball.position.x * 0.35
 
-        this.ball.position.z = -1.25
+        this.ball.position.z = this.player2Paddle.group.position.z + 0.08
         this.rallyCount++
         this.updateHUD()
       }
@@ -313,7 +314,7 @@ export class PingpongArena implements Stage {
     const npcPos = this.player2Paddle.group.position
     npcPos.x = THREE.MathUtils.lerp(npcPos.x, targetX, delta * 7)
     npcPos.y = THREE.MathUtils.lerp(npcPos.y, targetY, delta * 7)
-    npcPos.z = -1.35
+    npcPos.z = -1.58
 
     // Batas area/net/meja: cegah NPC paddle menembus permukaan meja atau melewati net
     PingpongPaddle.constrainPosition(npcPos, this.p2Bounds, this.player2Paddle.radius)
@@ -337,36 +338,31 @@ export class PingpongArena implements Stage {
   }
 
   private toggleCameraMode(): void {
-    if (this.cameraMode === 'fpp') this.cameraMode = 'tpp'
-    else if (this.cameraMode === 'tpp') this.cameraMode = 'broadcast'
-    else this.cameraMode = 'fpp'
+    this.cameraMode = this.cameraMode === 'pov' ? 'main' : 'pov'
     this.updateHUD()
   }
 
   private updateCamera(delta: number): void {
-    if (this.cameraMode === 'broadcast') {
-      this.camera.position.set(6.7, 5.1, 8.9)
-      this.camera.lookAt(0, 0.65, 0)
-      return
-    }
+    const t = 1 - Math.exp(-delta * 4)
 
-    if (this.cameraMode === 'tpp') {
+    if (this.cameraMode === 'main') {
+      // Main: perspektif dari belakang pemain, sudut tinggi agar meja/bola tetap jelas
       const targetCamX = this.currentPaddlePos.x * 0.08
-      const targetCamY = 1.90 + (this.currentPaddlePos.y - 0.95) * 0.08
-      this.camera.position.x = THREE.MathUtils.lerp(this.camera.position.x, targetCamX, delta * 4)
-      this.camera.position.y = THREE.MathUtils.lerp(this.camera.position.y, targetCamY, delta * 4)
-      this.camera.position.z = THREE.MathUtils.lerp(this.camera.position.z, 3.15, delta * 4)
-      this.camera.lookAt(this.ball.position.x * 0.08, 0.75, -0.50)
+      const targetCamY = 2.15 + (this.currentPaddlePos.y - 0.95) * 0.06
+      this.camera.position.x = THREE.MathUtils.lerp(this.camera.position.x, targetCamX, t)
+      this.camera.position.y = THREE.MathUtils.lerp(this.camera.position.y, targetCamY, t)
+      this.camera.position.z = THREE.MathUtils.lerp(this.camera.position.z, 3.45, t)
+      this.camera.lookAt(this.ball.position.x * 0.08, 0.78, -0.30)
       return
     }
 
-    // Default FPP mode (Stable & clear 1st-person view)
-    const targetCamX = this.currentPaddlePos.x * 0.05
-    const targetCamY = 1.30 + (this.currentPaddlePos.y - 0.95) * 0.05
-    this.camera.position.x = THREE.MathUtils.lerp(this.camera.position.x, targetCamX, delta * 4)
-    this.camera.position.y = THREE.MathUtils.lerp(this.camera.position.y, targetCamY, delta * 4)
-    this.camera.position.z = THREE.MathUtils.lerp(this.camera.position.z, 2.30, delta * 4)
-    this.camera.lookAt(this.ball.position.x * 0.05, 0.82, -0.60)
+    // POV (default): first-person, lebih mundur dan sedikit lebih tinggi agar pandangan leluasa
+    const targetCamX = this.currentPaddlePos.x * 0.04
+    const targetCamY = 1.34 + (this.currentPaddlePos.y - 0.95) * 0.04
+    this.camera.position.x = THREE.MathUtils.lerp(this.camera.position.x, targetCamX, t)
+    this.camera.position.y = THREE.MathUtils.lerp(this.camera.position.y, targetCamY, t)
+    this.camera.position.z = THREE.MathUtils.lerp(this.camera.position.z, 2.28, t)
+    this.camera.lookAt(this.ball.position.x * 0.05, 0.82, -0.40)
   }
 
   private updateAnimations(_delta: number): void {
@@ -385,7 +381,7 @@ export class PingpongArena implements Stage {
       // Player 1 serves - ball positioned near player 1 paddle
       const vx = (this.currentPaddlePos.x - 0) * 0.8 + (Math.random() - 0.5) * 0.3
       this.ball.reset(
-        new THREE.Vector3(this.currentPaddlePos.x * 0.4, 0.98, 1.15),
+        new THREE.Vector3(this.currentPaddlePos.x * 0.4, 0.98, 1.35),
         new THREE.Vector3(vx, 2.1, -4.2),
       )
       this.triggerSwing()
@@ -393,7 +389,7 @@ export class PingpongArena implements Stage {
       // Player 2 (NPC) serves - auto serve from NPC side toward player 1
       const vx = (Math.random() - 0.5) * 1.5
       this.ball.reset(
-        new THREE.Vector3((Math.random() - 0.5) * 0.5, 0.98, -1.15),
+        new THREE.Vector3((Math.random() - 0.5) * 0.5, 0.98, -1.35),
         new THREE.Vector3(vx, 2.1, 4.2),
       )
       // NPC serves automatically after a brief delay
@@ -421,35 +417,28 @@ export class PingpongArena implements Stage {
       this.maxRallyCount = this.rallyCount
     }
 
-    // Determine who won the point
-    // If ball was last hit by player1 and went out on player1's side or net, player2 gets point
-    // If ball was last hit by player2 and went out on player2's side or net, player1 gets point
-    // If ball hits floor on player1's side (z > 0) without being returned, player2 gets point
-    // If ball hits floor on player2's side (z < 0) without being returned, player1 gets point
+    /**
+     * Aturan tambahan poin (ITTF, disederhanakan untuk simulasi):
+     * - Bola menyentuh lantai/keluar area di sisi lawan dari pemukul terakhir => poin untuk pemukul terakhir.
+     * - Bola menyentuh lantai/keluar di sisi sendiri, terkena net/gagal menyeberang, atau serve fault
+     *   (belum ada pukulan sah) => poin untuk lawan.
+     */
     let pointWinner: Server = 'player1'
+    const z = this.ball.position.z
+    const side: Server | 'net' = z > 0.05 ? 'player1' : z < -0.05 ? 'player2' : 'net'
+    const lastHitter = this.ball.lastHitBy
 
-    if (this.ball.lastHitBy === 'player1') {
-      // Player 1 hit it last - if it went out on player 1's side or hit net, player 2 wins
-      if (this.ball.position.z > 0 || Math.abs(this.ball.position.z) < 0.05) {
-        pointWinner = 'player2'
-      } else {
-        pointWinner = 'player1'
-      }
-    } else if (this.ball.lastHitBy === 'player2') {
-      // Player 2 hit it last - if it went out on player 2's side or hit net, player 1 wins
-      if (this.ball.position.z < 0 || Math.abs(this.ball.position.z) < 0.05) {
-        pointWinner = 'player1'
-      } else {
-        pointWinner = 'player2'
-      }
+    if (lastHitter) {
+      const opponent: Server = lastHitter === 'player1' ? 'player2' : 'player1'
+      pointWinner = side === opponent ? lastHitter : opponent
     } else {
-      // No one hit it (serve fault) - determine by ball position
-      pointWinner = this.ball.position.z > 0 ? 'player2' : 'player1'
+      // Fault saat serve / tidak ada kontak paddle: poin untuk sisi seberang dari jatuhnya bola
+      pointWinner = side === 'player1' ? 'player2' : 'player1'
     }
 
     this.score.awardPoint(pointWinner)
 
-    const msg = this.rallyCount > 0 ? `RALLY BERAKHIR! TOUCH: ${this.rallyCount}` : `DI LUAR AREA!`
+    const msg = this.rallyCount > 0 ? `RALLY BERAKHIR! TOUCH: ${this.rallyCount}` : `POIN!`
     this.updateHUD(msg)
   }
 
@@ -526,7 +515,7 @@ export class PingpongArena implements Stage {
           box-shadow: 0 8px 24px rgba(2, 8, 23, 0.6);
           transition: transform 0.15s ease, background 0.15s ease;
         ">
-          CAM: FPP [C]
+          CAM: POV [C]
         </button>
       </div>
       <div id="pp-hint-msg" style="
@@ -561,15 +550,18 @@ export class PingpongArena implements Stage {
     const camBtn = this.hudElement.querySelector('#pp-cam-btn')
 
     if (countEl) countEl.textContent = `${this.rallyCount}`
-    if (camBtn) camBtn.textContent = `CAM: ${this.cameraMode.toUpperCase()} [C]`
+    if (camBtn) {
+      const label = this.cameraMode === 'pov' ? 'POV' : 'MAIN'
+      camBtn.textContent = `CAM: ${label} [C]`
+    }
 
     if (hintEl) {
       if (customMsg) {
         hintEl.textContent = customMsg
       } else if (this.serveState === 'serving') {
-        hintEl.textContent = "CLICK / SPACE UNTUK SERVE • TEKAN 'C' GANTI KAMERA"
+        hintEl.textContent = "CLICK / SPACE UNTUK SERVE • TEKAN 'C' GANTI KAMERA (POV/MAIN)"
       } else {
-        hintEl.textContent = "MOUSE UNTUK PADDLE • KLIK SMASH • TEKAN 'C' GANTI KAMERA"
+        hintEl.textContent = "MOUSE/GESTUR UNTUK PADDLE • KLIK SMASH • TEKAN 'C' GANTI KAMERA"
       }
     }
   }
@@ -619,6 +611,7 @@ export class PingpongArena implements Stage {
             <span>SERVE</span>
           </div>
         </div>
+        <div style="font-size: 0.56rem; font-weight: 700; color: #7dd3fc; letter-spacing: 0.06em;">SET <span id="pp-p1-sets">0</span></div>
       </div>
 
       <div id="pp-score-right" class="pp-score-badge" style="
@@ -645,6 +638,7 @@ export class PingpongArena implements Stage {
             <span>SERVE</span>
           </div>
         </div>
+        <div style="font-size: 0.56rem; font-weight: 700; color: #fca5a5; letter-spacing: 0.06em;">SET <span id="pp-p2-sets">0</span></div>
       </div>
 
       <div id="pp-game-status" style="
@@ -766,7 +760,12 @@ export class PingpongArena implements Stage {
       p2ScoreEl.classList.add('pp-score-pop')
     }
 
-    // Indikator server (kompak, di dalam badge sudut)
+    // Skor set (best-of) & indikator server
+    const p1SetsEl = this.scoreHUD.querySelector('#pp-p1-sets')
+    const p2SetsEl = this.scoreHUD.querySelector('#pp-p2-sets')
+    if (p1SetsEl) p1SetsEl.textContent = `${state.player1Sets ?? 0}`
+    if (p2SetsEl) p2SetsEl.textContent = `${state.player2Sets ?? 0}`
+
     if (p1ServeEl && p2ServeEl) {
       const p1Serve = p1ServeEl as HTMLElement
       const p2Serve = p2ServeEl as HTMLElement
@@ -806,8 +805,20 @@ export class PingpongArena implements Stage {
   }
 
   private handleGameOver(winner: Server): void {
-    this.updateHUD(winner === 'player1' ? 'SELAMAT! ANDA MENANG GIM INI! 🏆' : 'MUSUH MENANG GIM INI!')
-    this.updateScoreHUD(this.score.getState())
+    const state = this.score.getState()
+    if (state.matchOver) {
+      this.updateHUD(winner === 'player1' ? 'MATCH SELESAI! ANDA MENANG!' : 'MATCH SELESAI! MUSUH MENANG!')
+      this.updateScoreHUD(state)
+      return
+    }
+    this.updateHUD(winner === 'player1' ? 'SET SELESAI! ANDA MENANG SET!' : 'SET SELESAI! MUSUH MENANG SET!')
+    this.updateScoreHUD(state)
+    window.setTimeout(() => {
+      if (!this.score.isMatchOver() && this.score.isGameOver()) {
+        this.score.startNextSet()
+        this.resetServe(this.score.getServer())
+      }
+    }, 1800)
   }
 
   private restartMatch(): void {

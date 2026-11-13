@@ -1,55 +1,70 @@
 import * as THREE from 'three'
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 
 /** Regulation-inspired dimensions in metres; X = width, Z = table length. */
 export const TABLE_WIDTH = 1.525
 export const TABLE_LENGTH = 2.74
 export const TABLE_HEIGHT = 0.76
 
-/** The central table, line markings and simple undercarriage. */
+const TABLE_MODEL_URL = '/models/low_poly_table_tennis.glb'
+let tableGltfPromise: Promise<THREE.Group> | null = null
+
+function loadTableModel(): Promise<THREE.Group> {
+  if (!tableGltfPromise) {
+    tableGltfPromise = new Promise((resolve, reject) => {
+      new GLTFLoader().load(
+        TABLE_MODEL_URL,
+        (gltf) => resolve(gltf.scene),
+        undefined,
+        reject,
+      )
+    })
+  }
+  return tableGltfPromise
+}
+
+/** The central table loaded from GLB model, fitted to gameplay dimensions. */
 export class PingpongTable {
   readonly group = new THREE.Group()
 
   constructor() {
-    const topMaterial = new THREE.MeshStandardMaterial({ color: 0x0d4d3f, roughness: 0.62 })
-    const edgeMaterial = new THREE.MeshStandardMaterial({ color: 0x082f2a, roughness: 0.48, metalness: 0.18 })
-    const white = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.45 })
+    loadTableModel()
+      .then((scene) => {
+        const model = scene.clone(true)
+        const box = new THREE.Box3().setFromObject(model)
+        const size = box.getSize(new THREE.Vector3())
+        const center = box.getCenter(new THREE.Vector3())
 
-    const top = new THREE.Mesh(new THREE.BoxGeometry(TABLE_WIDTH, 0.055, TABLE_LENGTH), topMaterial)
-    top.position.y = TABLE_HEIGHT
-    top.castShadow = true
-    top.receiveShadow = true
-    this.group.add(top)
+        if (size.x > 0 && size.y > 0 && size.z > 0) {
+          const sx = TABLE_WIDTH / size.x
+          const sz = TABLE_LENGTH / size.z
+          // Fit X/Z to regulation size and use the same horizontal scale for height to preserve proportions.
+          model.scale.set(sx, sx, sz)
 
-    const edge = new THREE.Mesh(new THREE.BoxGeometry(TABLE_WIDTH + 0.045, 0.07, TABLE_LENGTH + 0.045), edgeMaterial)
-    edge.position.y = TABLE_HEIGHT - 0.02
-    this.group.add(edge)
+          const scaledBox = new THREE.Box3().setFromObject(model)
+          const scaledCenter = scaledBox.getCenter(new THREE.Vector3())
+          const scaledMaxY = scaledBox.max.y
 
-    const lineY = TABLE_HEIGHT + 0.031
-    const addLine = (width: number, length: number, x: number, z: number) => {
-      const line = new THREE.Mesh(new THREE.BoxGeometry(width, 0.006, length), white)
-      line.position.set(x, lineY, z)
-      this.group.add(line)
-    }
-    const border = 0.027
-    addLine(TABLE_WIDTH - border * 2, border, 0, -TABLE_LENGTH / 2 + border / 2)
-    addLine(TABLE_WIDTH - border * 2, border, 0, TABLE_LENGTH / 2 - border / 2)
-    addLine(border, TABLE_LENGTH, -TABLE_WIDTH / 2 + border / 2, 0)
-    addLine(border, TABLE_LENGTH, TABLE_WIDTH / 2 - border / 2, 0)
-    addLine(border, TABLE_LENGTH - border * 2, 0, 0)
+          model.position.x += -scaledCenter.x
+          model.position.z += -scaledCenter.z
+          // Align model's top surface to the gameplay table height.
+          model.position.y += TABLE_HEIGHT - scaledMaxY
+        } else {
+          model.position.set(0, 0, 0)
+        }
 
-    const frame = new THREE.Group()
-    const frameMaterial = new THREE.MeshStandardMaterial({ color: 0x172033, roughness: 0.42, metalness: 0.58 })
-    for (const x of [-0.55, 0.55]) {
-      for (const z of [-0.98, 0.98]) {
-        const leg = new THREE.Mesh(new THREE.BoxGeometry(0.07, TABLE_HEIGHT - 0.08, 0.07), frameMaterial)
-        leg.position.set(x, (TABLE_HEIGHT - 0.08) / 2, z)
-        leg.castShadow = true
-        frame.add(leg)
-      }
-    }
-    const brace = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 2.1), frameMaterial)
-    brace.position.set(0, 0.34, 0)
-    frame.add(brace)
-    this.group.add(frame)
+        model.traverse((obj) => {
+          if ((obj as THREE.Mesh).isMesh) {
+            const mesh = obj as THREE.Mesh
+            mesh.castShadow = true
+            mesh.receiveShadow = true
+          }
+        })
+
+        this.group.add(model)
+      })
+      .catch((err) => {
+        console.error('Failed to load ping pong table model:', err)
+      })
   }
 }

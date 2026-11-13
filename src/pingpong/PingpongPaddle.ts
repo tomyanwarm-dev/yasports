@@ -1,4 +1,6 @@
 import * as THREE from 'three'
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
+import { TABLE_LENGTH } from './PingpongTable.ts'
 
 /** Batas virtual area pemain relatif ke meja/net (meter, ruang lokal arena). */
 export interface PaddleBounds {
@@ -20,8 +22,25 @@ export interface PaddleRotationLimits {
   maxRollZ: number
 }
 
+const PADDLE_MODEL_URL = '/models/ping_pong_paddle.glb'
+let paddleGltfPromise: Promise<THREE.Group> | null = null
+
+function loadPaddleModel(): Promise<THREE.Group> {
+  if (!paddleGltfPromise) {
+    paddleGltfPromise = new Promise((resolve, reject) => {
+      new GLTFLoader().load(
+        PADDLE_MODEL_URL,
+        (gltf) => resolve(gltf.scene),
+        undefined,
+        reject,
+      )
+    })
+  }
+  return paddleGltfPromise
+}
+
 /**
- * 3D Ping Pong Paddle (Bat) with red/black rubber faces and a wooden handle.
+ * 3D Ping Pong Paddle (Bat) loaded from GLB model.
  * Includes coordinate constraints and stable rotation correction for hand-gesture control.
  */
 export class PingpongPaddle {
@@ -37,69 +56,62 @@ export class PingpongPaddle {
   constructor(isPlayerOne: boolean = true) {
     this.isPlayerOne = isPlayerOne
 
-    const woodMaterial = new THREE.MeshStandardMaterial({
-      color: 0xc28d53,
-      roughness: 0.5,
-      metalness: 0.1,
-    })
-
-    const redRubber = new THREE.MeshStandardMaterial({
-      color: 0xdc2626,
-      roughness: 0.35,
-      metalness: 0.05,
-    })
-
-    const blackRubber = new THREE.MeshStandardMaterial({
-      color: 0x1e293b,
-      roughness: 0.35,
-      metalness: 0.05,
-    })
-
-    // Main wooden core blade
+    // Collision/reference mesh (invisible) to keep a stable expected mesh reference.
     this.bladeMesh = new THREE.Mesh(
       new THREE.CylinderGeometry(this.radius, this.radius, this.thickness, 32),
-      woodMaterial,
+      new THREE.MeshBasicMaterial({ visible: false }),
     )
     this.bladeMesh.rotation.x = Math.PI / 2
-    this.bladeMesh.castShadow = true
     this.group.add(this.bladeMesh)
 
-    // Red Rubber Face (+Z side)
-    const redFace = new THREE.Mesh(
-      new THREE.CylinderGeometry(this.radius * 0.98, this.radius * 0.98, 0.002, 32),
-      redRubber,
-    )
-    redFace.rotation.x = Math.PI / 2
-    redFace.position.z = this.thickness / 2 + 0.001
-    this.group.add(redFace)
+    loadPaddleModel()
+      .then((scene) => {
+        const model = scene.clone(true)
+        const box = new THREE.Box3().setFromObject(model)
+        const size = box.getSize(new THREE.Vector3())
+        const center = box.getCenter(new THREE.Vector3())
 
-    // Black Rubber Face (-Z side)
-    const blackFace = new THREE.Mesh(
-      new THREE.CylinderGeometry(this.radius * 0.98, this.radius * 0.98, 0.002, 32),
-      blackRubber,
-    )
-    blackFace.rotation.x = Math.PI / 2
-    blackFace.position.z = -this.thickness / 2 - 0.001
-    this.group.add(blackFace)
+        if (size.x > 0 && size.y > 0 && size.z > 0) {
+          // Fit blade roughly to gameplay size (diameter ~0.18m). Use model's largest
+          // face dimension for the blade diameter and a smaller axis for thickness.
+          const dims = [size.x, size.y, size.z].sort((a, b) => a - b)
+          const bladeThickness = dims[0]
+          const bladeDiameter = dims[2]
+          const s = (this.radius * 2) / bladeDiameter
+          const thicknessScale = (this.thickness / bladeThickness) * 0.9
+          const thicknessAxis = size.z <= size.x && size.z <= size.y ? 'z' : size.x <= size.y ? 'x' : 'y'
 
-    // Handle
-    const handle = new THREE.Mesh(
-      new THREE.BoxGeometry(0.028, 0.10, 0.022),
-      woodMaterial,
-    )
-    handle.position.set(0, -this.radius - 0.045, 0)
-    handle.castShadow = true
-    this.group.add(handle)
+          model.scale.set(s, s, s)
+          if (thicknessAxis === 'z') model.scale.z *= thicknessScale
+          else if (thicknessAxis === 'x') model.scale.x *= thicknessScale
+          else model.scale.y *= thicknessScale
 
-    // Handle Grip Bands
-    const gripBand = new THREE.Mesh(
-      new THREE.BoxGeometry(0.03, 0.035, 0.024),
-      new THREE.MeshStandardMaterial({ color: isPlayerOne ? 0x2563eb : 0xef4444, roughness: 0.6 }),
-    )
-    gripBand.position.set(0, -this.radius - 0.045, 0)
-    this.group.add(gripBand)
+          // Center model at paddle origin so position/rotation control remains consistent.
+          const scaledBox = new THREE.Box3().setFromObject(model)
+          const scaledCenter = scaledBox.getCenter(new THREE.Vector3())
+          model.position.sub(scaledCenter)
+          // Keep blade/handle roughly aligned with existing vertical-handle assumption.
+          model.position.y += 0.02
+        }
 
-    // Orient paddle so red face is forward by default
+        // Orient so the paddle faces forward for the owning side.
+        model.rotation.y += this.isPlayerOne ? 0 : Math.PI
+
+        model.traverse((obj) => {
+          if ((obj as THREE.Mesh).isMesh) {
+            const mesh = obj as THREE.Mesh
+            mesh.castShadow = true
+            mesh.receiveShadow = true
+          }
+        })
+
+        this.group.add(model)
+      })
+      .catch((err) => {
+        console.error('Failed to load ping pong paddle model:', err)
+      })
+
+    // Orient paddle so facing is correct before/without model-specific tuning as well.
     if (!isPlayerOne) {
       this.group.rotation.y = Math.PI
     }
@@ -135,7 +147,7 @@ export class PingpongPaddle {
     return pos
   }
 
-  /** Batas area default: sisi pemain 1 (Z positif, tidak melewati net). */
+  /** Batas area default: sisi pemain 1 (Z positif, di sekitar ujung meja, tidak maju ke atas meja). */
   static getDefaultBounds(side: 'player1' | 'player2'): PaddleBounds {
     // TABLE_WIDTH=1.525, TABLE_LENGTH=2.74, TABLE_HEIGHT=0.76, permukaan atas ~0.7875.
     // Clearance mencakup blade (radius 0.09) + gagang + margin kemiringan agar tidak tembus meja.
@@ -143,10 +155,11 @@ export class PingpongPaddle {
     const minY = tableTop + 0.155
     const maxY = 1.48
     const xReach = 1.05
+    const tableEnd = TABLE_LENGTH / 2 // 1.37
     if (side === 'player1') {
-      return { minX: -xReach, maxX: xReach, minY, maxY, minZ: 0.22, maxZ: 1.75 }
+      return { minX: -xReach, maxX: xReach, minY, maxY, minZ: tableEnd + 0.02, maxZ: tableEnd + 0.50 }
     }
-    return { minX: -xReach, maxX: xReach, minY, maxY, minZ: -1.75, maxZ: -0.22 }
+    return { minX: -xReach, maxX: xReach, minY, maxY, minZ: -(tableEnd + 0.50), maxZ: -(tableEnd + 0.02) }
   }
 
   /** Batas rotasi default: bat tetap menghadap lapangan/bola, tahan input tangan terbalik. */
