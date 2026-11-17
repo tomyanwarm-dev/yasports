@@ -42,10 +42,14 @@ export class PingpongArena implements Stage {
   private score: PingpongScore
   private scoreHUD: HTMLElement | null = null
   private scoreHudOpacityTimer: number | null = null
+  private serveHoldY = 0
+  private serveHoldVy = 0
+  private autoServeTimer: number | null = null
 
   // Input & Paddle position (+ batas area meja/net & koreksi rotasi stabil)
-  private targetPaddlePos = new THREE.Vector3(0, 0.95, 1.58)
-  private currentPaddlePos = new THREE.Vector3(0, 0.95, 1.58)
+  // Posisi siap (ready) di garis tepi belakang meja (baseline), natural seperti pemain tenis meja.
+  private targetPaddlePos = new THREE.Vector3(0, 1.02, 1.55)
+  private currentPaddlePos = new THREE.Vector3(0, 1.02, 1.55)
   private paddleVelocity = new THREE.Vector3()
   private isSwinging = false
   private swingTimer = 0
@@ -96,11 +100,11 @@ export class PingpongArena implements Stage {
     this.scene.add(this.player2Paddle.group)
     this.scene.add(this.ball.group)
 
-    // Initial positions
+    // Initial positions (ready) di garis tepi belakang meja masing-masing
     this.player1.group.position.set(0, 0, 2.15)
     this.player2.group.position.set(0, 0, -1.95)
-    this.player1Paddle.group.position.set(0, 0.95, 1.58)
-    this.player2Paddle.group.position.set(0, 0.92, -1.58)
+    this.player1Paddle.group.position.set(0, 1.02, 1.55)
+    this.player2Paddle.group.position.set(0, 1.02, -1.42)
 
     this.createColliders()
 
@@ -121,6 +125,10 @@ export class PingpongArena implements Stage {
   }
 
   exit(): void {
+    if (this.autoServeTimer) {
+      window.clearTimeout(this.autoServeTimer)
+      this.autoServeTimer = null
+    }
     window.removeEventListener('pointermove', this.onPointerMove)
     window.removeEventListener('pointerdown', this.onPointerDown)
     window.removeEventListener('keydown', this.onKeyDown)
@@ -141,27 +149,29 @@ export class PingpongArena implements Stage {
     const normY = (event.clientY / window.innerHeight) * 2 - 1
 
     // Map screen cursor / gesture point to 3D workspace, lalu batasi agar tidak tembus meja/net.
-    this.targetPaddlePos.x = THREE.MathUtils.clamp(normX * 1.05, -1.05, 1.05)
-    this.targetPaddlePos.y = THREE.MathUtils.clamp(0.95 + (1 - normY) * 0.45, 0.95, 1.45)
+    this.targetPaddlePos.x = THREE.MathUtils.clamp(normX * 1.0, -1.0, 1.0)
+    this.targetPaddlePos.y = THREE.MathUtils.clamp(0.98 + (1 - normY) * 0.38, 0.95, 1.4)
     PingpongPaddle.constrainPosition(this.targetPaddlePos, this.p1Bounds, this.player1Paddle.radius)
   }
 
   private triggerSwing(): void {
     if (this.serveState === 'serving') {
+      // Saat giliran lawan servis, serve dilakukan otomatis (bukan oleh klik/space pemain).
+      if (this.score.getServer() === 'player2') return
       this.serveBall()
       return
     }
     this.isSwinging = true
-    this.swingTimer = 0.22
+    this.swingTimer = 0.2
   }
 
   private updatePlayer1Input(delta: number): void {
-    // Handle swing timer & forward impulse
-    let zOffset = 1.58
+    // Handle swing timer & forward impulse (dari baseline/tepi belakang meja)
+    let zOffset = 1.55
     if (this.swingTimer > 0) {
       this.swingTimer -= delta
-      this.p1SwingProgress = Math.sin((0.22 - this.swingTimer) / 0.22 * Math.PI)
-      zOffset = 1.58 - this.p1SwingProgress * 0.22
+      this.p1SwingProgress = Math.sin((0.2 - this.swingTimer) / 0.2 * Math.PI)
+      zOffset = 1.55 - this.p1SwingProgress * 0.22
     } else {
       this.isSwinging = false
       this.p1SwingProgress = THREE.MathUtils.lerp(this.p1SwingProgress, 0, delta * 10)
@@ -204,18 +214,35 @@ export class PingpongArena implements Stage {
 
   private updateBallPhysics(delta: number): void {
     if (this.serveState === 'serving') {
-      // Ball stays suspended near server until hit/served
+      // Saat siap servis: bola memantul stabil di meja dan mengikuti bet (tanpa gerak acak).
       const server = this.score.getServer()
-      const serveHeight = 0.95 + Math.sin(Date.now() * 0.005) * 0.04
+      const dt = Math.min(delta, 0.033)
+      const tableY = TABLE_HEIGHT + this.ball.radius
+      // Bola di atas sisi meja server, dekat/di depan wajah bet yang akan melakukan servis.
+      const holdZ = server === 'player1'
+        ? Math.max(this.currentPaddlePos.z - 0.22, TABLE_LENGTH / 2 - 0.18)
+        : Math.min(this.player2Paddle.group.position.z + 0.22, -(TABLE_LENGTH / 2 - 0.18))
+      const holdXRaw = server === 'player1' ? this.currentPaddlePos.x : this.player2Paddle.group.position.x
+      const holdX = THREE.MathUtils.clamp(holdXRaw, -TABLE_WIDTH / 2 + 0.15, TABLE_WIDTH / 2 - 0.15)
 
-      if (server === 'player1') {
-        this.ball.position.set(this.currentPaddlePos.x * 0.5, serveHeight, 1.35)
-      } else {
-        // NPC serve position
-        this.ball.position.set((Math.random() - 0.5) * 0.3, serveHeight, -1.35)
+      if (this.serveHoldY <= 0) {
+        this.serveHoldY = tableY + 0.1
+        this.serveHoldVy = 0
       }
+
+      this.serveHoldVy += -9.81 * dt
+      this.serveHoldY += this.serveHoldVy * dt
+      if (this.serveHoldY <= tableY) {
+        this.serveHoldY = tableY
+        this.serveHoldVy = 1.9 // pantulan kecil stabil di meja (realistis, proporsional)
+      }
+
+      this.ball.position.set(holdX, this.serveHoldY, holdZ)
+      this.ball.velocity.set(0, 0, 0)
       this.ball.mesh.position.copy(this.ball.position)
-      this.ball.shadowDot.position.set(this.ball.position.x, 0.762, this.ball.position.z)
+      this.ball.shadowDot.position.set(this.ball.position.x, TABLE_HEIGHT + 0.002, this.ball.position.z)
+      const shadowScale = Math.max(0.4, 1.2 - (this.serveHoldY - TABLE_HEIGHT) * 0.5)
+      this.ball.shadowDot.scale.set(shadowScale, shadowScale, 1)
       return
     }
 
@@ -228,6 +255,9 @@ export class PingpongArena implements Stage {
       return
     }
 
+    const prevBallX = this.ball.position.x
+    const prevBallY = this.ball.position.y
+    const prevBallZ = this.ball.position.z
     this.ball.update(delta)
 
     // --- Table Collision & Bouncing ---
@@ -249,22 +279,34 @@ export class PingpongArena implements Stage {
       }
     }
 
-    // --- Net Collision ---
+    // --- Net Collision (swept, tidak bisa ditembus) ---
     const netHeightTop = TABLE_HEIGHT + 0.1525
+    const netHalfWidth = TABLE_WIDTH / 2 + 0.08
+    const netThickness = 0.025
     if (
-      Math.abs(this.ball.position.z) < 0.035 &&
-      this.ball.position.y <= netHeightTop + 0.02 &&
-      this.ball.position.y >= TABLE_HEIGHT &&
-      Math.abs(this.ball.position.x) <= TABLE_WIDTH / 2 + 0.04
+      this.ball.position.y - ballR <= netHeightTop &&
+      prevBallY - ballR <= netHeightTop + 0.02 &&
+      Math.abs(this.ball.position.x) <= netHalfWidth
     ) {
-      // Hit net
-      this.ball.velocity.z = -this.ball.velocity.z * 0.28
-      this.ball.velocity.y *= 0.4
-      this.ball.position.z = Math.sign(this.ball.position.z || 1) * 0.04
+      const crossed = (prevBallZ > 0 && this.ball.position.z <= 0) || (prevBallZ < 0 && this.ball.position.z >= 0)
+      const insideNet = Math.abs(this.ball.position.z) <= netThickness
+      if (crossed || insideNet) {
+        const fromSide = prevBallZ >= 0 ? 1 : -1
+        this.ball.position.z = fromSide * (netThickness + ballR + 0.001)
+        // Pantulkan/dorong balik agar bola tidak menembus net
+        if (Math.sign(this.ball.velocity.z) !== fromSide) {
+          this.ball.velocity.z = Math.abs(this.ball.velocity.z) * 0.28 * fromSide
+        } else {
+          this.ball.velocity.z *= 0.28
+        }
+        this.ball.velocity.y *= 0.5
+        this.ball.velocity.x *= 0.85
+        this.ball.mesh.position.copy(this.ball.position)
+      }
     }
 
     // --- Player 1 Paddle Collision ---
-    if (this.ball.position.z > 0.4 && this.ball.position.z < 1.95 && this.ball.velocity.z > 0) {
+    if (this.ball.position.z > 0.4 && this.ball.position.z < 1.75 && this.ball.velocity.z > 0) {
       const dist = this.ball.position.distanceTo(this.player1Paddle.group.position)
       if (dist < 0.22) {
         // Hit by Player 1!
@@ -283,18 +325,22 @@ export class PingpongArena implements Stage {
     }
 
     // --- Player 2 (NPC) Paddle Collision ---
-    if (this.ball.position.z < -0.4 && this.ball.position.z > -1.95 && this.ball.velocity.z < 0) {
+    if (this.ball.position.z < -0.4 && this.ball.position.z > -1.75 && this.ball.velocity.z < 0) {
       const dist = this.ball.position.distanceTo(this.player2Paddle.group.position)
       if (dist < 0.24) {
-        // Hit by Player 2 (NPC)!
+        // Hit by Player 2 (NPC)! - arc konsisten, tidak menggelinding
         this.ball.lastHitBy = 'player2'
         this.p2SwingProgress = 1.0
+        const npcPaddle = this.player2Paddle.group.position
+        const offsetX = THREE.MathUtils.clamp(this.ball.position.x - npcPaddle.x, -0.18, 0.18)
 
-        this.ball.velocity.z = 4.3 + Math.random() * 0.6
-        this.ball.velocity.y = 2.1 + Math.random() * 0.4
-        this.ball.velocity.x = (Math.random() - 0.5) * 1.2 - this.ball.position.x * 0.35
+        this.ball.velocity.z = 4.6
+        this.ball.velocity.y = Math.max(2.35, 2.1 + (npcPaddle.y - 0.9) * 0.5)
+        this.ball.velocity.x = THREE.MathUtils.clamp(offsetX * 3.2 - this.ball.position.x * 0.12, -1.6, 1.6)
 
-        this.ball.position.z = this.player2Paddle.group.position.z + 0.08
+        // Pastikan bola terangkat di atas meja saat kontak agar memantul, bukan menyusur
+        this.ball.position.y = Math.max(this.ball.position.y, TABLE_HEIGHT + this.ball.radius + 0.02)
+        this.ball.position.z = npcPaddle.z + 0.08
         this.rallyCount++
         this.updateHUD()
       }
@@ -314,7 +360,7 @@ export class PingpongArena implements Stage {
     const npcPos = this.player2Paddle.group.position
     npcPos.x = THREE.MathUtils.lerp(npcPos.x, targetX, delta * 7)
     npcPos.y = THREE.MathUtils.lerp(npcPos.y, targetY, delta * 7)
-    npcPos.z = -1.58
+    npcPos.z = -1.42
 
     // Batas area/net/meja: cegah NPC paddle menembus permukaan meja atau melewati net
     PingpongPaddle.constrainPosition(npcPos, this.p2Bounds, this.player2Paddle.radius)
@@ -372,39 +418,59 @@ export class PingpongArena implements Stage {
   private serveBall(): void {
     this.serveState = 'rally'
     this.rallyCount = 0
+    this.serveHoldY = 0
+    this.serveHoldVy = 0
     this.updateHUD()
     this.updateScoreHUD(this.score.getState())
 
     const server = this.score.getServer()
 
     if (server === 'player1') {
-      // Player 1 serves - ball positioned near player 1 paddle
+      // Serve dari posisi dekat bet menuju sisi lawan
+      const startX = THREE.MathUtils.clamp(this.ball.position.x, -TABLE_WIDTH / 2 + 0.15, TABLE_WIDTH / 2 - 0.15)
+      const startY = Math.max(this.ball.position.y, TABLE_HEIGHT + this.ball.radius)
+      const serveZ = Math.max(this.ball.position.z, Math.max(this.currentPaddlePos.z - 0.22, TABLE_LENGTH / 2 - 0.18))
       const vx = (this.currentPaddlePos.x - 0) * 0.8 + (Math.random() - 0.5) * 0.3
       this.ball.reset(
-        new THREE.Vector3(this.currentPaddlePos.x * 0.4, 0.98, 1.35),
+        new THREE.Vector3(startX, startY, serveZ),
         new THREE.Vector3(vx, 2.1, -4.2),
       )
       this.triggerSwing()
     } else {
-      // Player 2 (NPC) serves - auto serve from NPC side toward player 1
-      const vx = (Math.random() - 0.5) * 1.5
+      // NPC serve (otomatis) dengan kekuatan setara serve pemain
+      const startX = THREE.MathUtils.clamp(this.player2Paddle.group.position.x, -TABLE_WIDTH / 2 + 0.15, TABLE_WIDTH / 2 - 0.15)
+      const startY = Math.max(this.ball.position.y, TABLE_HEIGHT + this.ball.radius)
+      const serveZ = Math.min(this.ball.position.z, Math.min(this.player2Paddle.group.position.z + 0.22, -(TABLE_LENGTH / 2 - 0.18)))
+      const vx = (this.player2Paddle.group.position.x - 0) * 0.8 + (Math.random() - 0.5) * 0.3
       this.ball.reset(
-        new THREE.Vector3((Math.random() - 0.5) * 0.5, 0.98, -1.35),
+        new THREE.Vector3(startX, startY, serveZ),
         new THREE.Vector3(vx, 2.1, 4.2),
       )
-      // NPC serves automatically after a brief delay
-      setTimeout(() => {
-        if (this.serveState === 'rally') {
-          this.p2SwingProgress = 1.0
-          setTimeout(() => { this.p2SwingProgress = 0 }, 200)
-        }
-      }, 500)
+      this.p2SwingProgress = 1.0
+      window.setTimeout(() => { this.p2SwingProgress = 0 }, 200)
     }
   }
 
   private resetServe(_server: Server): void {
     this.serveState = 'serving'
-    this.updateHUD('KLIK ATAU TEKAN SPACE UNTUK SERVE!')
+    this.serveHoldY = 0
+    this.serveHoldVy = 0
+    if (this.autoServeTimer) {
+      window.clearTimeout(this.autoServeTimer)
+      this.autoServeTimer = null
+    }
+    const server = this.score.getServer()
+    if (server === 'player2') {
+      this.updateHUD('LAWAN AKAN SERVE...')
+      this.autoServeTimer = window.setTimeout(() => {
+        this.autoServeTimer = null
+        if (this.serveState === 'serving' && this.score.getServer() === 'player2') {
+          this.serveBall()
+        }
+      }, 900)
+    } else {
+      this.updateHUD('KLIK ATAU TEKAN SPACE UNTUK SERVE!')
+    }
     this.updateScoreHUD(this.score.getState())
   }
 
@@ -472,9 +538,10 @@ export class PingpongArena implements Stage {
   private createHUD(): void {
     this.hudElement = document.createElement('div')
     this.hudElement.className = 'pingpong-hud-overlay'
+    // Rally dan kamera ditempatkan di tengah atas.
     this.hudElement.style.cssText = `
       position: absolute;
-      top: 24px;
+      top: max(12px, env(safe-area-inset-top));
       left: 50%;
       transform: translateX(-50%);
       display: flex;
@@ -559,7 +626,9 @@ export class PingpongArena implements Stage {
       if (customMsg) {
         hintEl.textContent = customMsg
       } else if (this.serveState === 'serving') {
-        hintEl.textContent = "CLICK / SPACE UNTUK SERVE • TEKAN 'C' GANTI KAMERA (POV/MAIN)"
+        hintEl.textContent = this.score.getServer() === 'player2'
+          ? "LAWAN SERVE OTOMATIS • TEKAN 'C' GANTI KAMERA (POV/MAIN)"
+          : "CLICK / SPACE UNTUK SERVE • TEKAN 'C' GANTI KAMERA (POV/MAIN)"
       } else {
         hintEl.textContent = "MOUSE/GESTUR UNTUK PADDLE • KLIK SMASH • TEKAN 'C' GANTI KAMERA"
       }
@@ -581,115 +650,172 @@ export class PingpongArena implements Stage {
       position: absolute;
       inset: 0;
       pointer-events: none;
-      z-index: 20;
+      z-index: 21;
       font-family: system-ui, -apple-system, sans-serif;
     `
-    // Skor ditempatkan di sudut kiri/kanan paling atas (zona aman gestur tangan),
-    // dengan opacity dasar 50% dan naik ke 80% saat skor bertambah.
+    // Skor dipisah: ANDA di kiri atas, MUSUH di kanan atas. Rally & kamera di tengah (HUD terpisah).
+    // Ukuran tampilan skor tetap sama (angka 2.6rem).
     this.scoreHUD.innerHTML = `
-      <div id="pp-score-left" class="pp-score-badge" style="
-        position: absolute;
-        top: max(8px, env(safe-area-inset-top));
-        left: max(10px, env(safe-area-inset-left));
-        display: flex;
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 2px;
-        padding: 6px 10px;
-        background: rgba(15, 23, 42, 0.55);
-        border: 1px solid rgba(56, 189, 248, 0.25);
-        border-radius: 10px;
-        backdrop-filter: blur(6px);
-        opacity: 0.5;
-        transition: opacity 0.25s ease;
-      ">
-        <div style="font-size: 0.58rem; font-weight: 800; letter-spacing: 0.12em; color: #94a3b8; text-transform: uppercase;">ANDA</div>
-        <div style="display: flex; align-items: baseline; gap: 8px;">
-          <div id="pp-p1-score" style="font-size: 2rem; font-weight: 900; font-variant-numeric: tabular-nums; color: #f8fafc; line-height: 1; text-shadow: 0 0 12px rgba(56, 189, 248, 0.35);">0</div>
-          <div id="pp-p1-serve" style="display: inline-flex; align-items: center; gap: 3px; font-size: 0.56rem; font-weight: 800; letter-spacing: 0.08em; color: #38bdf8; opacity: 0; transition: opacity 0.25s ease;">
-            <span style="width: 6px; height: 6px; border-radius: 50%; background: #38bdf8; box-shadow: 0 0 6px #38bdf8; animation: pp-serve-pulse 1.5s ease-in-out infinite;"></span>
-            <span>SERVE</span>
-          </div>
+      <div id="pp-score-panel-player" class="pp-score-panel pp-score-panel--player">
+        <div class="pp-score-header">
+          <span id="pp-p1-serve" class="pp-serve-dot pp-serve-dot--p1"></span>
+          <span class="pp-score-label">ANDA</span>
         </div>
-        <div style="font-size: 0.56rem; font-weight: 700; color: #7dd3fc; letter-spacing: 0.06em;">SET <span id="pp-p1-sets">0</span></div>
+        <div class="pp-score-main">
+          <span id="pp-p1-score" class="pp-score-number pp-score-number--p1">0</span>
+        </div>
+        <div class="pp-score-meta">
+          <span class="pp-score-sets">SET <span id="pp-p1-sets">0</span></span>
+        </div>
       </div>
 
-      <div id="pp-score-right" class="pp-score-badge" style="
-        position: absolute;
-        top: max(8px, env(safe-area-inset-top));
-        right: max(10px, env(safe-area-inset-right));
-        display: flex;
-        flex-direction: column;
-        align-items: flex-end;
-        gap: 2px;
-        padding: 6px 10px;
-        background: rgba(15, 23, 42, 0.55);
-        border: 1px solid rgba(239, 68, 68, 0.22);
-        border-radius: 10px;
-        backdrop-filter: blur(6px);
-        opacity: 0.5;
-        transition: opacity 0.25s ease;
-      ">
-        <div style="font-size: 0.58rem; font-weight: 800; letter-spacing: 0.12em; color: #94a3b8; text-transform: uppercase;">MUSUH</div>
-        <div style="display: flex; align-items: baseline; gap: 8px; flex-direction: row-reverse;">
-          <div id="pp-p2-score" style="font-size: 2rem; font-weight: 900; font-variant-numeric: tabular-nums; color: #f8fafc; line-height: 1; text-shadow: 0 0 12px rgba(239, 68, 68, 0.3);">0</div>
-          <div id="pp-p2-serve" style="display: inline-flex; align-items: center; gap: 3px; font-size: 0.56rem; font-weight: 800; letter-spacing: 0.08em; color: #ef4444; opacity: 0; transition: opacity 0.25s ease;">
-            <span style="width: 6px; height: 6px; border-radius: 50%; background: #ef4444; box-shadow: 0 0 6px #ef4444; animation: pp-serve-pulse 1.5s ease-in-out infinite;"></span>
-            <span>SERVE</span>
-          </div>
+      <div id="pp-score-panel-enemy" class="pp-score-panel pp-score-panel--enemy">
+        <div class="pp-score-header">
+          <span class="pp-score-label">MUSUH</span>
+          <span id="pp-p2-serve" class="pp-serve-dot pp-serve-dot--p2"></span>
         </div>
-        <div style="font-size: 0.56rem; font-weight: 700; color: #fca5a5; letter-spacing: 0.06em;">SET <span id="pp-p2-sets">0</span></div>
+        <div class="pp-score-main">
+          <span id="pp-p2-score" class="pp-score-number pp-score-number--p2">0</span>
+        </div>
+        <div class="pp-score-meta">
+          <span class="pp-score-sets">SET <span id="pp-p2-sets">0</span></span>
+        </div>
       </div>
 
-      <div id="pp-game-status" style="
-        display: none;
-        position: absolute;
-        top: max(8px, env(safe-area-inset-top));
-        left: 50%;
-        transform: translateX(-50%);
-        max-width: calc(100% - 220px);
-        padding: 4px 10px;
-        font-size: 0.62rem;
-        font-weight: 700;
-        letter-spacing: 0.04em;
-        color: #cbd5e1;
-        text-align: center;
-        background: rgba(15, 23, 42, 0.35);
-        border: 1px solid rgba(148, 163, 184, 0.15);
-        border-radius: 999px;
-        backdrop-filter: blur(4px);
-        opacity: 0.5;
-        transition: opacity 0.25s ease;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      "></div>
-
-      <button id="pp-restart-btn" type="button" style="
-        display: none;
-        position: absolute;
-        top: calc(max(8px, env(safe-area-inset-top)) + 34px);
-        left: 50%;
-        transform: translateX(-50%);
-        background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-        border: none;
-        color: #f8fafc;
-        font-weight: 800;
-        font-size: 0.72rem;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        padding: 8px 18px;
-        border-radius: 999px;
-        cursor: pointer;
-        box-shadow: 0 6px 20px rgba(37, 99, 235, 0.45);
-        pointer-events: auto;
-        opacity: 0.85;
-      ">MAIN LAGI</button>
+      <div id="pp-game-status" class="pp-score-status"></div>
+      <button id="pp-restart-btn" type="button" class="pp-restart-btn">MAIN LAGI</button>
 
       <style>
+        .pp-score-panel {
+          position: absolute;
+          top: max(12px, env(safe-area-inset-top));
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+          padding: 16px 24px;
+          min-width: 168px;
+          background: rgba(15, 23, 42, 0.72);
+          border: 1px solid rgba(148, 163, 184, 0.35);
+          border-radius: 18px;
+          backdrop-filter: blur(10px);
+          -webkit-backdrop-filter: blur(10px);
+          box-shadow: 0 10px 30px rgba(2, 6, 23, 0.45);
+          opacity: 0.9;
+          transition: opacity 0.25s ease;
+          pointer-events: none;
+          user-select: none;
+          -webkit-user-select: none;
+        }
+        .pp-score-panel--player { left: max(12px, env(safe-area-inset-left)); align-items: flex-start; }
+        .pp-score-panel--enemy { right: max(12px, env(safe-area-inset-right)); align-items: flex-end; }
+        .pp-score-header {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          width: 100%;
+        }
+        .pp-score-panel--enemy .pp-score-header { justify-content: flex-end; }
+        .pp-score-main {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 100%;
+          padding: 2px 0;
+        }
+        .pp-score-label {
+          font-size: 0.88rem;
+          font-weight: 800;
+          letter-spacing: 0.12em;
+          color: #94a3b8;
+          text-transform: uppercase;
+          white-space: nowrap;
+        }
+        .pp-score-number {
+          font-size: 3.6rem;
+          font-weight: 900;
+          font-variant-numeric: tabular-nums;
+          line-height: 1;
+          min-width: 1.5ch;
+          text-align: center;
+          color: #f8fafc;
+        }
+        .pp-score-number--p1 { text-shadow: 0 0 14px rgba(56, 189, 248, 0.4); }
+        .pp-score-number--p2 { text-shadow: 0 0 14px rgba(239, 68, 68, 0.35); }
+        .pp-serve-dot {
+          width: 11px;
+          height: 11px;
+          border-radius: 50%;
+          flex: 0 0 auto;
+          opacity: 0;
+          transition: opacity 0.25s ease;
+        }
+        .pp-serve-dot--p1 { background: #38bdf8; box-shadow: 0 0 9px #38bdf8; }
+        .pp-serve-dot--p2 { background: #ef4444; box-shadow: 0 0 9px #ef4444; }
+        .pp-serve-dot.is-active {
+          opacity: 1;
+          animation: pp-serve-pulse 1.5s ease-in-out infinite;
+        }
+        .pp-score-meta {
+          display: flex;
+          align-items: center;
+          width: 100%;
+          margin-top: 2px;
+          padding-top: 10px;
+          border-top: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        .pp-score-panel--player .pp-score-meta { justify-content: flex-start; }
+        .pp-score-panel--enemy .pp-score-meta { justify-content: flex-end; }
+        .pp-score-sets {
+          font-size: 0.8rem;
+          font-weight: 700;
+          letter-spacing: 0.08em;
+          color: #94a3b8;
+          white-space: nowrap;
+        }
+        .pp-score-sets span { color: #cbd5e1; }
+        .pp-score-status {
+          display: none;
+          position: absolute;
+          top: calc(max(12px, env(safe-area-inset-top)) + 86px);
+          left: 50%;
+          transform: translateX(-50%);
+          padding: 6px 14px;
+          background: rgba(15, 23, 42, 0.75);
+          border: 1px solid rgba(148, 163, 184, 0.28);
+          border-radius: 999px;
+          backdrop-filter: blur(8px);
+          -webkit-backdrop-filter: blur(8px);
+          font-size: 0.78rem;
+          font-weight: 800;
+          letter-spacing: 0.05em;
+          white-space: nowrap;
+          z-index: 22;
+        }
+        .pp-score-status.is-visible { display: inline-block; }
+        .pp-restart-btn {
+          display: none;
+          position: absolute;
+          top: calc(max(12px, env(safe-area-inset-top)) + 126px);
+          left: 50%;
+          transform: translateX(-50%);
+          background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+          border: none;
+          color: #f8fafc;
+          font-weight: 800;
+          font-size: 0.8rem;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          padding: 9px 20px;
+          border-radius: 999px;
+          cursor: pointer;
+          box-shadow: 0 6px 18px rgba(37, 99, 235, 0.4);
+          pointer-events: auto;
+          opacity: 0.9;
+          z-index: 22;
+        }
         @keyframes pp-serve-pulse {
           0%, 100% { opacity: 1; transform: scale(1); }
-          50% { opacity: 0.5; transform: scale(0.85); }
+          50% { opacity: 0.45; transform: scale(0.82); }
         }
         @keyframes pp-score-pop {
           0% { transform: scale(1); }
@@ -703,7 +829,6 @@ export class PingpongArena implements Stage {
     const root = document.querySelector('.viewport') || document.body
     root.appendChild(this.scoreHUD)
 
-    // Add restart button handler
     const restartBtn = this.scoreHUD.querySelector('#pp-restart-btn')
     if (restartBtn) {
       restartBtn.addEventListener('click', (e) => {
@@ -716,37 +841,34 @@ export class PingpongArena implements Stage {
   private updateScoreHUD(state: ScoreState): void {
     if (!this.scoreHUD) return
 
+    const panelEnemy = this.scoreHUD.querySelector('#pp-score-panel-enemy') as HTMLElement | null
+    const panelPlayer = this.scoreHUD.querySelector('#pp-score-panel-player') as HTMLElement | null
     const p1ScoreEl = this.scoreHUD.querySelector('#pp-p1-score')
     const p2ScoreEl = this.scoreHUD.querySelector('#pp-p2-score')
     const p1ServeEl = this.scoreHUD.querySelector('#pp-p1-serve')
     const p2ServeEl = this.scoreHUD.querySelector('#pp-p2-serve')
     const statusEl = this.scoreHUD.querySelector('#pp-game-status') as HTMLElement | null
     const restartBtn = this.scoreHUD.querySelector('#pp-restart-btn') as HTMLElement | null
-    const leftBadge = this.scoreHUD.querySelector('#pp-score-left') as HTMLElement | null
-    const rightBadge = this.scoreHUD.querySelector('#pp-score-right') as HTMLElement | null
 
-    // Opacity: 50% idle, naik ke 80% saat ada pembaruan skor, lalu kembali ke 50%.
-    // Saat game over dipertahankan 80% agar hasil akhir tetap terbaca.
-    const setOpacity = (value: string) => {
-      if (leftBadge) leftBadge.style.opacity = value
-      if (rightBadge) rightBadge.style.opacity = value
-      if (statusEl) statusEl.style.opacity = value
-    }
+    // Opacity: 0.9 saat idle, penuh sesaat setelah skor berubah, lalu kembali.
+    // Saat game over dipertahankan penuh agar hasil akhir tetap terbaca.
     if (this.scoreHudOpacityTimer) {
       window.clearTimeout(this.scoreHudOpacityTimer)
       this.scoreHudOpacityTimer = null
     }
-    if (state.gameState === 'gameOver') {
-      setOpacity('0.8')
-    } else {
-      setOpacity('0.8')
+    const setPanelsOpacity = (value: string) => {
+      if (panelEnemy) panelEnemy.style.opacity = value
+      if (panelPlayer) panelPlayer.style.opacity = value
+    }
+    setPanelsOpacity('1')
+    if (state.gameState !== 'gameOver') {
       this.scoreHudOpacityTimer = window.setTimeout(() => {
-        setOpacity('0.5')
+        setPanelsOpacity('0.9')
         this.scoreHudOpacityTimer = null
       }, 900)
     }
 
-    // Update skor + animasi pop (font proporsional, tetap terbaca)
+    // Update angka skor + animasi pop
     if (p1ScoreEl) {
       p1ScoreEl.textContent = `${state.player1Score}`
       p1ScoreEl.classList.remove('pp-score-pop')
@@ -760,39 +882,32 @@ export class PingpongArena implements Stage {
       p2ScoreEl.classList.add('pp-score-pop')
     }
 
-    // Skor set (best-of) & indikator server
+    // Skor set (best-of)
     const p1SetsEl = this.scoreHUD.querySelector('#pp-p1-sets')
     const p2SetsEl = this.scoreHUD.querySelector('#pp-p2-sets')
     if (p1SetsEl) p1SetsEl.textContent = `${state.player1Sets ?? 0}`
     if (p2SetsEl) p2SetsEl.textContent = `${state.player2Sets ?? 0}`
 
+    // Indikator servis: titik menyala di sisi pemain yang sedang melakukan servis
     if (p1ServeEl && p2ServeEl) {
-      const p1Serve = p1ServeEl as HTMLElement
-      const p2Serve = p2ServeEl as HTMLElement
-      if (state.server === 'player1') {
-        p1Serve.style.opacity = '1'
-        p2Serve.style.opacity = '0'
-      } else {
-        p1Serve.style.opacity = '0'
-        p2Serve.style.opacity = '1'
-      }
+      p1ServeEl.classList.toggle('is-active', state.server === 'player1')
+      p2ServeEl.classList.toggle('is-active', state.server === 'player2')
     }
 
-    // Status ringkas di tepi atas (bukan tengah layar) agar lintasan bola tetap bersih
+    // Status ringkas di dalam panel (deuce / hasil akhir) — tidak ada UI di tengah layar
     if (statusEl) {
       if (state.gameState === 'gameOver') {
         const winnerText = state.winner === 'player1' ? 'ANDA MENANG' : 'MUSUH MENANG'
         const winnerColor = state.winner === 'player1' ? '#7dd3fc' : '#fca5a5'
-        statusEl.style.display = 'block'
-        statusEl.innerHTML = `<span style="color: ${winnerColor}; font-weight: 800;">${winnerText}</span>`
+        statusEl.classList.add('is-visible')
+        statusEl.innerHTML = `<span style="color: ${winnerColor};">${winnerText}</span>`
         if (restartBtn) restartBtn.style.display = 'block'
       } else if (this.score.isDeuce()) {
-        statusEl.style.display = 'block'
-        statusEl.innerHTML = `<span style="color: #fcd34d;">DEUCE • MENANG 2</span>`
+        statusEl.classList.add('is-visible')
+        statusEl.innerHTML = `<span style="color: #fcd34d;">DEUCE</span>`
         if (restartBtn) restartBtn.style.display = 'none'
       } else {
-        // Saat normal, status disembunyikan agar area pandang tetap minim distraksi
-        statusEl.style.display = 'none'
+        statusEl.classList.remove('is-visible')
         statusEl.innerHTML = ''
         if (restartBtn) restartBtn.style.display = 'none'
       }

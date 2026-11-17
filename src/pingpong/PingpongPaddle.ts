@@ -147,19 +147,21 @@ export class PingpongPaddle {
     return pos
   }
 
-  /** Batas area default: sisi pemain 1 (Z positif, di sekitar ujung meja, tidak maju ke atas meja). */
+  /** Batas area default: posisi siap di batas area meja pemain (ready position). */
   static getDefaultBounds(side: 'player1' | 'player2'): PaddleBounds {
     // TABLE_WIDTH=1.525, TABLE_LENGTH=2.74, TABLE_HEIGHT=0.76, permukaan atas ~0.7875.
-    // Clearance mencakup blade (radius 0.09) + gagang + margin kemiringan agar tidak tembus meja.
+    // Bat dijaga di sekitar batas ujung meja: tidak terlalu masuk ke tengah, tidak terlalu jauh keluar.
     const tableTop = 0.7875
-    const minY = tableTop + 0.155
-    const maxY = 1.48
-    const xReach = 1.05
+    const minY = tableTop + 0.12
+    const maxY = 1.45
+    const xReach = 1.0
     const tableEnd = TABLE_LENGTH / 2 // 1.37
     if (side === 'player1') {
-      return { minX: -xReach, maxX: xReach, minY, maxY, minZ: tableEnd + 0.02, maxZ: tableEnd + 0.50 }
+      // Baseline/tepi belakang meja (ready), bisa maju sedikit untuk pukul, tidak masuk tengah meja
+      return { minX: -xReach, maxX: xReach, minY, maxY, minZ: tableEnd - 0.02, maxZ: tableEnd + 0.35 }
     }
-    return { minX: -xReach, maxX: xReach, minY, maxY, minZ: -(tableEnd + 0.50), maxZ: -(tableEnd + 0.02) }
+    // Lawan: persis di tepi garis belakang meja seberang (tidak terlalu jauh)
+    return { minX: -xReach, maxX: xReach, minY, maxY, minZ: -(tableEnd + 0.22), maxZ: -(tableEnd - 0.02) }
   }
 
   /** Batas rotasi default: bat tetap menghadap lapangan/bola, tahan input tangan terbalik. */
