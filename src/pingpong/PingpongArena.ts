@@ -59,6 +59,10 @@ export class PingpongArena implements Stage {
   private readonly p1RotLimits = PingpongPaddle.getDefaultRotationLimits('player1')
   private readonly p2Bounds = PingpongPaddle.getDefaultBounds('player2')
   private readonly p2RotLimits = PingpongPaddle.getDefaultRotationLimits('player2')
+
+  // True saat bet player ditempelkan ke R_Hand_Attach glTF (posisi dunia di-urutulkan arena).
+  private p1PaddleAttached = false
+  private p2PaddleAttached = false
   private readonly desiredP1Rot = new THREE.Euler(0, 0, 0, 'XYZ')
   private readonly desiredP2Rot = new THREE.Euler(Math.PI, Math.PI, 0, 'XYZ')
 
@@ -122,6 +126,17 @@ export class PingpongArena implements Stage {
     this.createHUD()
     this.createScoreHUD()
     this.resetServe(this.score.getServer())
+    // Muat glTF player1/player2 secara independen; pasang bet di attach point.
+    void this.loadArenaModels()
+  }
+
+  /** Muat model glTF per instance (SkeletonUtils clone per player), lalu pasang bet. */
+  private async loadArenaModels(): Promise<void> {
+    await Promise.all([this.player1.loadModels(), this.player2.loadModels()])
+    this.p1PaddleAttached = this.player1.attachPaddle(this.player1Paddle.group, 'right')
+    this.p2PaddleAttached = this.player2.attachPaddle(this.player2Paddle.group, 'right')
+    this.syncNpcAnimations()
+    this.syncVisibility()
   }
 
   exit(): void {
@@ -198,12 +213,20 @@ export class PingpongArena implements Stage {
       this.currentPaddlePos.x * 0.12,
       -this.currentPaddlePos.x * 0.18,
     )
-    this.player1Paddle.group.position.copy(this.currentPaddlePos)
-    this.player1Paddle.applyStableRotation(this.desiredP1Rot, delta, this.p1RotLimits, 16)
+    if (this.p1PaddleAttached) {
+      // glTF: bet ditempelkan ke R_Hand_Attach; masukkan world pose ke sana.
+      // Di cam 'main': bet didorong sedikit ke depan badan (soal cosmetik saja).
+      const targetP1 = this.cameraMode === 'main'
+        ? new THREE.Vector3(this.currentPaddlePos.x, this.currentPaddlePos.y, this.currentPaddlePos.z - 0.5)
+        : this.currentPaddlePos
+      const quat = new THREE.Quaternion().setFromEuler(this.desiredP1Rot)
+      this.player1.applyPaddleWorldPose(targetP1, quat)
+    } else {
+      // Fallback: posisi manual di baseline meja (seperti sebelumnya).
+      this.player1Paddle.group.position.copy(this.currentPaddlePos)
+      this.player1Paddle.applyStableRotation(this.desiredP1Rot, delta, this.p1RotLimits, 16)
+    }
 
-    // Sembunyikan tubuh kedua pemain agar tidak menutupi bola/sudut pandang saat bermain.
-    this.player1.group.visible = false
-    this.player2.group.visible = false
     this.player1.group.position.set(
       this.currentPaddlePos.x * 0.75,
       0,
@@ -319,31 +342,37 @@ export class PingpongArena implements Stage {
 
         // Adjust position slightly forward to avoid stuck collision
         this.ball.position.z = this.currentPaddlePos.z - 0.08
+
+        // Tahan bola agar melambung di atas net (biar tidak langsung jatuh balik ke
+        // daerah sendiri karena tumbukan net saat meluncur langsung ke net).
+        this.ball.position.y = Math.max(this.ball.position.y, TABLE_HEIGHT + this.ball.radius + 0.25)
         this.rallyCount++
         this.updateHUD()
       }
     }
 
     // --- Player 2 (NPC) Paddle Collision ---
-    if (this.ball.position.z < -0.4 && this.ball.position.z > -1.75 && this.ball.velocity.z < 0) {
-      const dist = this.ball.position.distanceTo(this.player2Paddle.group.position)
-      if (dist < 0.24) {
-        // Hit by Player 2 (NPC)! - arc konsisten, tidak menggelinding
-        this.ball.lastHitBy = 'player2'
-        this.p2SwingProgress = 1.0
-        const npcPaddle = this.player2Paddle.group.position
-        const offsetX = THREE.MathUtils.clamp(this.ball.position.x - npcPaddle.x, -0.18, 0.18)
+    // Window sedikit lebih lebar & reaktif: NPC smash juga kalau bola lewat window
+    // tapi masih dekat paddle (bola cepat melampaui window utama).
+    const npcDist = this.ball.position.distanceTo(this.player2Paddle.group.position)
+    const npcInZone = (this.ball.position.z < -0.4 && this.ball.position.z > -1.75)
+      || (this.ball.position.z < -0.1 && npcDist < 0.5)
+    if (npcInZone && this.ball.velocity.z < 0 && npcDist < 0.5) {
+      // Hit by Player 2 (NPC)! - arc konsisten, tidak menggelinding
+      this.ball.lastHitBy = 'player2'
+      this.p2SwingProgress = 1.0
+      const npcPaddle = this.player2Paddle.group.position
+      const offsetX = THREE.MathUtils.clamp(this.ball.position.x - npcPaddle.x, -0.18, 0.18)
 
-        this.ball.velocity.z = 4.6
-        this.ball.velocity.y = Math.max(2.35, 2.1 + (npcPaddle.y - 0.9) * 0.5)
-        this.ball.velocity.x = THREE.MathUtils.clamp(offsetX * 3.2 - this.ball.position.x * 0.12, -1.6, 1.6)
+      this.ball.velocity.z = 4.9
+      this.ball.velocity.y = Math.max(2.4, 2.1 + (npcPaddle.y - 0.9) * 0.5)
+      this.ball.velocity.x = THREE.MathUtils.clamp(offsetX * 3.2 - this.ball.position.x * 0.12, -1.6, 1.6)
 
-        // Pastikan bola terangkat di atas meja saat kontak agar memantul, bukan menyusur
-        this.ball.position.y = Math.max(this.ball.position.y, TABLE_HEIGHT + this.ball.radius + 0.02)
-        this.ball.position.z = npcPaddle.z + 0.08
-        this.rallyCount++
-        this.updateHUD()
-      }
+      // Pastikan bola terangkat tinggi agar melambung di atas net (mirror P1 smash).
+      this.ball.position.y = Math.max(this.ball.position.y, TABLE_HEIGHT + this.ball.radius + 0.22)
+      this.ball.position.z = npcPaddle.z + 0.08
+      this.rallyCount++
+      this.updateHUD()
     }
 
     // --- Out of Bounds / Floor Hit Check ---
@@ -380,7 +409,12 @@ export class PingpongArena implements Stage {
       Math.PI - npcPos.x * 0.12,
       npcPos.x * 0.08,
     )
-    this.player2Paddle.applyStableRotation(this.desiredP2Rot, delta, this.p2RotLimits, 14)
+    if (this.p2PaddleAttached) {
+      const quat = new THREE.Quaternion().setFromEuler(this.desiredP2Rot)
+      this.player2.applyPaddleWorldPose(npcPos, quat)
+    } else {
+      this.player2Paddle.applyStableRotation(this.desiredP2Rot, delta, this.p2RotLimits, 14)
+    }
   }
 
   private toggleCameraMode(): void {
@@ -411,8 +445,86 @@ export class PingpongArena implements Stage {
     this.camera.lookAt(this.ball.position.x * 0.05, 0.82, -0.40)
   }
 
-  private updateAnimations(_delta: number): void {
-    // Future visual animations (e.g. net sway) can be updated here
+  private updateAnimations(delta: number): void {
+    this.player1.update(delta)
+    this.player2.update(delta)
+    this.syncPlayer1Animations()
+    this.syncNpcAnimations()
+    this.syncPlayer1BehindTable()
+    this.syncVisibility()
+  }
+
+  /** Player 1: saat bermain -> setSwingProgress memicu 'Forehand'; lain -> 'Ready'. */
+  private syncPlayer1Animations(): void {
+    if (this.swingTimer > 0 || this.p1SwingProgress > 0.02) {
+      this.player1.setSwingProgress(this.p1SwingProgress)
+    } else {
+      this.player1.playAnimation('Ready', 0.3)
+    }
+  }
+
+  /** NPC: 'Ready' saat bola mendekat/rally di luar rally -> 'Idle'; 'Forehand' saat memukul (p2SwingProgress). */
+  private syncNpcAnimations(): void {
+    const ballApproaching = this.serveState === 'rally' && this.ball.velocity.z < 0
+    // NPC smash dari updateBallPhysics (p2SwingProgress = 1.0 saat ditendang).
+    if (this.p2SwingProgress > 0.02) {
+      this.player2.playAnimation('Forehand', 0.15)
+    } else if (ballApproaching || this.serveState === 'serving') {
+      this.player2.playAnimation('Ready', 0.2)
+    } else {
+      this.player2.playAnimation('Idle', 0.4)
+    }
+  }
+
+  /**
+   * Visibilitas pemain saat kamera POV vs main:
+   * - POV (playing): player1 (self, saat bermain) disembunyikan — tidak menutupi
+   *   pandangan kamera ke arah meja/net/bola. Bat P1 dibawa ke level scene
+   *   supaya tetap terlihat (kalau disembunyikan bersama model, bat ikut tersembunyi
+   *   karena bat parent model via attach point).
+   * - NPC (player2): selalu terlihat di kedua mode, termasuk rambut mohawk-nya.
+   * - Bat P2: selalu terlihat.
+   * - Main: player1 tampil di belakang meja (z besar), tidak menghalangi sudut pandang.
+   */
+  private syncVisibility(): void {
+    const isPlaying = this.serveState === 'serving' || this.serveState === 'rally'
+    const hidePlayer1 = isPlaying && this.cameraMode === 'pov'
+
+    // P1 (self): hides in POV play; visible in main/idle.
+    this.player1.group.visible = !hidePlayer1
+    // NPC: always visible, both modes.
+    this.player2.group.visible = true
+
+    // Player 1 paddle: keep visible even when player1 hidden in POV
+    // (re-parent to scene when hidden so Three.js renders it).
+    const paddle1 = this.player1Paddle.group
+    if (hidePlayer1) {
+      if (paddle1.parent && paddle1.parent !== this.scene) {
+        paddle1.parent.remove(paddle1)
+        this.scene.add(paddle1)
+      }
+    } else {
+      if (paddle1.parent !== this.scene) {
+        this.player1.attachPaddle(paddle1, 'right')
+      }
+    }
+    paddle1.visible = true
+    this.player2Paddle.group.visible = true
+  }
+
+  /**
+   * Posisi P1 saat mode main: di belakang meja (z di belakang kamera),
+   * tidak menutupi sudut pandang kamera.
+   */
+  private syncPlayer1BehindTable(): void {
+    if (this.cameraMode === 'main') {
+      // Seberang musuh (sisi positif Z, dari NPC berada di sisi negatif).
+      this.player1.group.position.set(
+        this.currentPaddlePos.x * 0.75,
+        0,
+        TABLE_LENGTH / 2 + 0.05,
+      )
+    }
   }
 
   private serveBall(): void {
@@ -431,9 +543,11 @@ export class PingpongArena implements Stage {
       const startY = Math.max(this.ball.position.y, TABLE_HEIGHT + this.ball.radius)
       const serveZ = Math.max(this.ball.position.z, Math.max(this.currentPaddlePos.z - 0.22, TABLE_LENGTH / 2 - 0.18))
       const vx = (this.currentPaddlePos.x - 0) * 0.8 + (Math.random() - 0.5) * 0.3
+      // vy 2.5 biar bola jelas melambung di atas net -> sampai ke sisi lawan
+      // (dengan vy kecil, bola cepat cross net di lantai -> terpantul balik -> point lawan saat serve).
       this.ball.reset(
         new THREE.Vector3(startX, startY, serveZ),
-        new THREE.Vector3(vx, 2.1, -4.2),
+        new THREE.Vector3(vx, 2.5, -4.2),
       )
       this.triggerSwing()
     } else {
@@ -442,9 +556,11 @@ export class PingpongArena implements Stage {
       const startY = Math.max(this.ball.position.y, TABLE_HEIGHT + this.ball.radius)
       const serveZ = Math.min(this.ball.position.z, Math.min(this.player2Paddle.group.position.z + 0.22, -(TABLE_LENGTH / 2 - 0.18)))
       const vx = (this.player2Paddle.group.position.x - 0) * 0.8 + (Math.random() - 0.5) * 0.3
+      // vy 2.5 agar bola melambung di atas net, tidak cross net terlalu rendah
+      // (cross net terlalu rendah = pantulan net balik ke sisi saya => point lawan).
       this.ball.reset(
         new THREE.Vector3(startX, startY, serveZ),
-        new THREE.Vector3(vx, 2.1, 4.2),
+        new THREE.Vector3(vx, 2.5, 4.2),
       )
       this.p2SwingProgress = 1.0
       window.setTimeout(() => { this.p2SwingProgress = 0 }, 200)
