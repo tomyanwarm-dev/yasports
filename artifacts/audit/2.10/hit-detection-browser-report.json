@@ -1,0 +1,657 @@
+{
+  "controls": {
+    "officialServeStarted": true,
+    "practiceFeedToggled": true
+  },
+  "practiceFeeds": [
+    {
+      "launch": 2,
+      "rally": 2,
+      "line": "[BADMINTON-DIAG] launchPracticeFeed: launch#2 rally#2 src=practice-feed offset=1.20,0.50,3.60 velocity=0.10,4.85,1.11",
+      "at": 1794470280910,
+      "attempt": null
+    },
+    {
+      "launch": 3,
+      "rally": 3,
+      "line": "[BADMINTON-DIAG] launchPracticeFeed: launch#3 rally#3 src=practice-feed offset=1.20,0.50,3.60 velocity=0.10,4.85,1.11",
+      "at": 1794470283191,
+      "attempt": {
+        "feed": 3,
+        "delayMs": 0,
+        "scheduledAt": 1794470283192,
+        "requestAccepted": true,
+        "redContacts": [
+          {
+            "at": 1794470283426,
+            "line": "[BADMINTON-DIAG] update: racket HIT detected! clip=ForehandClear speed=4.50 pos=1.14,1.33,4.15, velocity=-0.94,2.57,-3.57"
+          }
+        ],
+        "beforeFlight": "[BADMINTON-DIAG] update: flying pos=(1.20,0.58,3.62) vel=(0.10,4.69,1.11) visual=(1.20,0.58,3.62) world=(1.20,0.58,3.62) rally=3 launch=3 src=practice-feed",
+        "afterLaunch": "[BADMINTON-DIAG] applyHit: after launch launch#4 rally#3 player=red pos=1.22,1.37,3.86, vel=-0.94,2.57,-3.57",
+        "sentAt": 1794470283202,
+        "requestResults": [
+          "true",
+          "false"
+        ],
+        "requestAt": 1794470283199
+      }
+    },
+    {
+      "launch": 5,
+      "rally": 4,
+      "line": "[BADMINTON-DIAG] launchPracticeFeed: launch#5 rally#4 src=practice-feed offset=1.20,0.50,3.60 velocity=0.10,4.85,1.11",
+      "at": 1794470285492,
+      "attempt": {
+        "feed": 5,
+        "delayMs": 180,
+        "scheduledAt": 1794470285492,
+        "requestAccepted": true,
+        "redContacts": [
+          {
+            "at": 1794470286009,
+            "line": "[BADMINTON-DIAG] update: racket HIT detected! clip=ForehandClear speed=4.50 pos=1.12,1.41,4.13, velocity=-0.92,3.30,-2.92"
+          }
+        ],
+        "beforeFlight": "[BADMINTON-DIAG] update: flying pos=(1.20,0.58,3.62) vel=(0.10,4.69,1.11) visual=(1.20,0.58,3.62) world=(1.20,0.58,3.62) rally=4 launch=5 src=practice-feed",
+        "afterLaunch": "[BADMINTON-DIAG] applyHit: after launch launch#6 rally#4 player=red pos=1.25,1.70,4.17, vel=-0.92,3.30,-2.92",
+        "sentAt": 1794470285698,
+        "requestResults": [
+          "true"
+        ],
+        "requestAt": 1794470285697
+      }
+    },
+    {
+      "launch": 7,
+      "rally": 5,
+      "line": "[BADMINTON-DIAG] launchPracticeFeed: launch#7 rally#5 src=practice-feed offset=1.20,0.50,3.60 velocity=0.10,4.85,1.11",
+      "at": 1794470288241,
+      "attempt": {
+        "feed": 7,
+        "delayMs": 350,
+        "scheduledAt": 1794470288241,
+        "requestAccepted": true,
+        "redContacts": [
+          {
+            "at": 1794470288859,
+            "line": "[BADMINTON-DIAG] update: racket HIT detected! clip=ForehandClear speed=4.50 pos=1.13,1.36,4.14, velocity=-0.95,2.90,-3.31"
+          }
+        ],
+        "beforeFlight": "[BADMINTON-DIAG] update: flying pos=(1.25,1.69,4.19) vel=(0.10,-0.38,1.11) visual=(1.25,1.69,4.19) world=(1.25,1.69,4.19) rally=5 launch=7 src=practice-feed",
+        "afterLaunch": "[BADMINTON-DIAG] applyHit: after launch launch#8 rally#5 player=red pos=1.26,1.63,4.29, vel=-0.95,2.90,-3.31",
+        "sentAt": 1794470288600,
+        "requestResults": [
+          "true"
+        ],
+        "requestAt": 1794470288599
+      }
+    },
+    {
+      "launch": 9,
+      "rally": 6,
+      "line": "[BADMINTON-DIAG] launchPracticeFeed: launch#9 rally#6 src=practice-feed offset=1.20,0.50,3.60 velocity=0.10,4.85,1.11",
+      "at": 1794470291027,
+      "attempt": {
+        "feed": 9,
+        "delayMs": 550,
+        "scheduledAt": 1794470291027,
+        "requestAccepted": true,
+        "redContacts": [
+          {
+            "at": 1794470291758,
+            "line": "[BADMINTON-DIAG] update: racket HIT detected! clip=ForehandClear speed=4.50 pos=1.17,1.28,4.18, velocity=-0.88,1.90,-3.98"
+          }
+        ],
+        "beforeFlight": "[BADMINTON-DIAG] update: flying pos=(1.25,1.70,4.17) vel=(0.10,-0.22,1.11) visual=(1.25,1.70,4.17) world=(1.25,1.70,4.17) rally=6 launch=9 src=practice-feed",
+        "afterLaunch": "[BADMINTON-DIAG] applyHit: after launch launch#10 rally#6 player=red pos=1.27,1.42,4.42, vel=-0.88,1.90,-3.98",
+        "sentAt": 1794470291602,
+        "requestResults": [
+          "true"
+        ],
+        "requestAt": 1794470291601
+      }
+    },
+    {
+      "launch": 11,
+      "rally": 7,
+      "line": "[BADMINTON-DIAG] launchPracticeFeed: launch#11 rally#7 src=practice-feed offset=1.20,0.50,3.60 velocity=0.10,4.85,1.11",
+      "at": 1794470293743,
+      "attempt": {
+        "feed": 11,
+        "delayMs": 900,
+        "scheduledAt": 1794470293743,
+        "requestAccepted": true,
+        "redContacts": [],
+        "beforeFlight": null,
+        "afterLaunch": null,
+        "sentAt": 1794470294654,
+        "requestResults": [
+          "true"
+        ],
+        "requestAt": 1794470294653
+      }
+    },
+    {
+      "launch": 12,
+      "rally": 8,
+      "line": "[BADMINTON-DIAG] launchPracticeFeed: launch#12 rally#8 src=practice-feed offset=1.20,0.50,3.60 velocity=0.10,4.85,1.11",
+      "at": 1794470296044,
+      "attempt": null
+    }
+  ],
+  "idleWindow": {
+    "firstFeed": {
+      "launch": 2,
+      "rally": 2,
+      "line": "[BADMINTON-DIAG] launchPracticeFeed: launch#2 rally#2 src=practice-feed offset=1.20,0.50,3.60 velocity=0.10,4.85,1.11",
+      "at": 1794470280910,
+      "attempt": null
+    },
+    "nextFeed": {
+      "launch": 3,
+      "rally": 3,
+      "line": "[BADMINTON-DIAG] launchPracticeFeed: launch#3 rally#3 src=practice-feed offset=1.20,0.50,3.60 velocity=0.10,4.85,1.11",
+      "at": 1794470283191,
+      "attempt": {
+        "feed": 3,
+        "delayMs": 0,
+        "scheduledAt": 1794470283192,
+        "requestAccepted": true,
+        "redContacts": [
+          {
+            "at": 1794470283426,
+            "line": "[BADMINTON-DIAG] update: racket HIT detected! clip=ForehandClear speed=4.50 pos=1.14,1.33,4.15, velocity=-0.94,2.57,-3.57"
+          }
+        ],
+        "beforeFlight": "[BADMINTON-DIAG] update: flying pos=(1.20,0.58,3.62) vel=(0.10,4.69,1.11) visual=(1.20,0.58,3.62) world=(1.20,0.58,3.62) rally=3 launch=3 src=practice-feed",
+        "afterLaunch": "[BADMINTON-DIAG] applyHit: after launch launch#4 rally#3 player=red pos=1.22,1.37,3.86, vel=-0.94,2.57,-3.57",
+        "sentAt": 1794470283202,
+        "requestResults": [
+          "true",
+          "false"
+        ],
+        "requestAt": 1794470283199
+      }
+    },
+    "redFalseHitCount": 0
+  },
+  "attempts": [
+    {
+      "feed": 3,
+      "delayMs": 0,
+      "scheduledAt": 1794470283192,
+      "requestAccepted": true,
+      "redContacts": [
+        {
+          "at": 1794470283426,
+          "line": "[BADMINTON-DIAG] update: racket HIT detected! clip=ForehandClear speed=4.50 pos=1.14,1.33,4.15, velocity=-0.94,2.57,-3.57"
+        }
+      ],
+      "beforeFlight": "[BADMINTON-DIAG] update: flying pos=(1.20,0.58,3.62) vel=(0.10,4.69,1.11) visual=(1.20,0.58,3.62) world=(1.20,0.58,3.62) rally=3 launch=3 src=practice-feed",
+      "afterLaunch": "[BADMINTON-DIAG] applyHit: after launch launch#4 rally#3 player=red pos=1.22,1.37,3.86, vel=-0.94,2.57,-3.57",
+      "sentAt": 1794470283202,
+      "requestResults": [
+        "true",
+        "false"
+      ],
+      "requestAt": 1794470283199
+    },
+    {
+      "feed": 5,
+      "delayMs": 180,
+      "scheduledAt": 1794470285492,
+      "requestAccepted": true,
+      "redContacts": [
+        {
+          "at": 1794470286009,
+          "line": "[BADMINTON-DIAG] update: racket HIT detected! clip=ForehandClear speed=4.50 pos=1.12,1.41,4.13, velocity=-0.92,3.30,-2.92"
+        }
+      ],
+      "beforeFlight": "[BADMINTON-DIAG] update: flying pos=(1.20,0.58,3.62) vel=(0.10,4.69,1.11) visual=(1.20,0.58,3.62) world=(1.20,0.58,3.62) rally=4 launch=5 src=practice-feed",
+      "afterLaunch": "[BADMINTON-DIAG] applyHit: after launch launch#6 rally#4 player=red pos=1.25,1.70,4.17, vel=-0.92,3.30,-2.92",
+      "sentAt": 1794470285698,
+      "requestResults": [
+        "true"
+      ],
+      "requestAt": 1794470285697
+    },
+    {
+      "feed": 7,
+      "delayMs": 350,
+      "scheduledAt": 1794470288241,
+      "requestAccepted": true,
+      "redContacts": [
+        {
+          "at": 1794470288859,
+          "line": "[BADMINTON-DIAG] update: racket HIT detected! clip=ForehandClear speed=4.50 pos=1.13,1.36,4.14, velocity=-0.95,2.90,-3.31"
+        }
+      ],
+      "beforeFlight": "[BADMINTON-DIAG] update: flying pos=(1.25,1.69,4.19) vel=(0.10,-0.38,1.11) visual=(1.25,1.69,4.19) world=(1.25,1.69,4.19) rally=5 launch=7 src=practice-feed",
+      "afterLaunch": "[BADMINTON-DIAG] applyHit: after launch launch#8 rally#5 player=red pos=1.26,1.63,4.29, vel=-0.95,2.90,-3.31",
+      "sentAt": 1794470288600,
+      "requestResults": [
+        "true"
+      ],
+      "requestAt": 1794470288599
+    },
+    {
+      "feed": 9,
+      "delayMs": 550,
+      "scheduledAt": 1794470291027,
+      "requestAccepted": true,
+      "redContacts": [
+        {
+          "at": 1794470291758,
+          "line": "[BADMINTON-DIAG] update: racket HIT detected! clip=ForehandClear speed=4.50 pos=1.17,1.28,4.18, velocity=-0.88,1.90,-3.98"
+        }
+      ],
+      "beforeFlight": "[BADMINTON-DIAG] update: flying pos=(1.25,1.70,4.17) vel=(0.10,-0.22,1.11) visual=(1.25,1.70,4.17) world=(1.25,1.70,4.17) rally=6 launch=9 src=practice-feed",
+      "afterLaunch": "[BADMINTON-DIAG] applyHit: after launch launch#10 rally#6 player=red pos=1.27,1.42,4.42, vel=-0.88,1.90,-3.98",
+      "sentAt": 1794470291602,
+      "requestResults": [
+        "true"
+      ],
+      "requestAt": 1794470291601
+    },
+    {
+      "feed": 11,
+      "delayMs": 900,
+      "scheduledAt": 1794470293743,
+      "requestAccepted": true,
+      "redContacts": [],
+      "beforeFlight": null,
+      "afterLaunch": null,
+      "sentAt": 1794470294654,
+      "requestResults": [
+        "true"
+      ],
+      "requestAt": 1794470294653
+    }
+  ],
+  "busyRetries": [
+    {
+      "feed": 3,
+      "at": 1794470283344
+    }
+  ],
+  "keyEvidence": [
+    {
+      "at": 1794470272861,
+      "line": "[BADMINTON-DIAG] racketPro[blue]: SUKSES — root=\"BadmintonRacket\" child dari \"RightHand\", RacketFrame=1 node, raket lama terlepas (mesh lama tersisa=0), transform lokal pos=(-0.0000,0.0700,-0.0000) rot=(52.9,55.0,173.0)deg scale=(-1.00,-1.00,-1.00), world RacketFrame=(-1.6300,1.1000,-4.6000)"
+    },
+    {
+      "at": 1794470272862,
+      "line": "[BADMINTON-DIAG] racketPro[red]: SUKSES — root=\"BadmintonRacket\" child dari \"RightHand\", RacketFrame=1 node, raket lama terlepas (mesh lama tersisa=0), transform lokal pos=(-0.0000,0.0700,-0.0000) rot=(52.9,55.0,173.0)deg scale=(-1.00,-1.00,-1.00), world RacketFrame=(1.6300,1.1000,4.6000)"
+    },
+    {
+      "at": 1794470277679,
+      "line": "[BADMINTON-DIAG] officialServe: persiapan server=red serveSide=right clip=ServeShort kontak@0.208s, shuttle pindah ke tangan kiri server"
+    },
+    {
+      "at": 1794470277876,
+      "line": "[BADMINTON-DIAG] physics.launch: pos=(0.53,1.17,4.30) vel=(0.88,4.41,-6.50)"
+    },
+    {
+      "at": 1794470277878,
+      "line": "[BADMINTON-DIAG] update: flying pos=(0.53,1.17,4.30) vel=(0.88,4.41,-6.50) visual=(0.53,1.17,4.30) world=(0.53,1.17,4.30) rally=1 launch=1 src=official-serve"
+    },
+    {
+      "at": 1794470277892,
+      "line": "[BADMINTON-DIAG] AI: mode=intercept, blue pos=(1.88,-4.60)"
+    },
+    {
+      "at": 1794470278390,
+      "line": "[BADMINTON-DIAG] update: flying pos=(0.98,2.14,0.94) vel=(0.88,-0.66,-6.50) visual=(0.98,2.14,0.94) world=(0.98,2.14,0.94) rally=1 launch=1 src=official-serve"
+    },
+    {
+      "at": 1794470278758,
+      "line": "[BADMINTON-DIAG] AI: swing ForehandDrive, shuttle=(1.29,1.30,-1.33) vel=(0.88,-4.09,-6.50) blue=(1.46,-2.34)"
+    },
+    {
+      "at": 1794470278891,
+      "line": "[BADMINTON-DIAG] update: flying pos=(1.42,0.58,-2.31) vel=(0.88,-5.57,-6.50) visual=(1.42,0.58,-2.31) world=(1.42,0.58,-2.31) rally=1 launch=1 src=official-serve"
+    },
+    {
+      "at": 1794470278907,
+      "line": "[BADMINTON-DIAG] AI: mode=recover, blue pos=(1.44,-2.26)"
+    },
+    {
+      "at": 1794470278996,
+      "line": "[BADMINTON-DIAG] handleRallyEnd: after awardPoint rally=1 winner=red, new server=red, serveSide=left, score=1-0, pendingServe=false (tetap false, tidak otomatis)"
+    },
+    {
+      "at": 1794470279440,
+      "line": "[BADMINTON-DIAG] AI: mode=patrol, blue pos=(0.28,-3.02)"
+    },
+    {
+      "at": 1794470280910,
+      "line": "[BADMINTON-DIAG] launchPracticeFeed: launch#2 rally#2 src=practice-feed offset=1.20,0.50,3.60 velocity=0.10,4.85,1.11"
+    },
+    {
+      "at": 1794470280911,
+      "line": "[BADMINTON-DIAG] physics.launch: pos=(1.20,0.50,3.60) vel=(0.10,4.85,1.11)"
+    },
+    {
+      "at": 1794470280911,
+      "line": "[BADMINTON-DIAG] launchPracticeFeed: after launch launch#2 rally#2 pos=1.20,0.50,3.60 phase=flying"
+    },
+    {
+      "at": 1794470280925,
+      "line": "[BADMINTON-DIAG] update: flying pos=(1.20,0.58,3.62) vel=(0.10,4.69,1.11) visual=(1.20,0.58,3.62) world=(1.20,0.58,3.62) rally=2 launch=2 src=practice-feed"
+    },
+    {
+      "at": 1794470281423,
+      "line": "[BADMINTON-DIAG] update: flying pos=(1.25,1.70,4.17) vel=(0.10,-0.22,1.11) visual=(1.25,1.70,4.17) world=(1.25,1.70,4.17) rally=2 launch=2 src=practice-feed"
+    },
+    {
+      "at": 1794470281924,
+      "line": "[BADMINTON-DIAG] update: flying pos=(1.30,0.36,4.73) vel=(0.10,-5.12,1.11) visual=(1.30,0.36,4.73) world=(1.30,0.36,4.73) rally=2 launch=2 src=practice-feed"
+    },
+    {
+      "at": 1794470281997,
+      "line": "[BADMINTON-DIAG] handleRallyEnd: after awardPoint rally=2 winner=blue, new server=blue, serveSide=left, score=1-1, pendingServe=false (tetap false, tidak otomatis)"
+    },
+    {
+      "at": 1794470283191,
+      "line": "[BADMINTON-DIAG] launchPracticeFeed: launch#3 rally#3 src=practice-feed offset=1.20,0.50,3.60 velocity=0.10,4.85,1.11"
+    },
+    {
+      "at": 1794470283194,
+      "line": "[BADMINTON-DIAG] physics.launch: pos=(1.20,0.50,3.60) vel=(0.10,4.85,1.11)"
+    },
+    {
+      "at": 1794470283196,
+      "line": "[BADMINTON-DIAG] launchPracticeFeed: after launch launch#3 rally#3 pos=1.20,0.50,3.60 phase=flying"
+    },
+    {
+      "at": 1794470283198,
+      "line": "[BADMINTON-DIAG] SwingInput: key=Space repeat=false -> handler"
+    },
+    {
+      "at": 1794470283199,
+      "line": "[BADMINTON-DIAG] onSwingInput requestSwing hasil: true"
+    },
+    {
+      "at": 1794470283208,
+      "line": "[BADMINTON-DIAG] update: flying pos=(1.20,0.58,3.62) vel=(0.10,4.69,1.11) visual=(1.20,0.58,3.62) world=(1.20,0.58,3.62) rally=3 launch=3 src=practice-feed"
+    },
+    {
+      "at": 1794470283335,
+      "line": "[BADMINTON-DIAG] SwingInput: key=Space repeat=false -> handler"
+    },
+    {
+      "at": 1794470283338,
+      "line": "[BADMINTON-DIAG] onSwingInput requestSwing hasil: false"
+    },
+    {
+      "at": 1794470283425,
+      "line": "[BADMINTON-DIAG] red hit incoming shuttle velocity=(0.10,2.56,1.11) phase=flying"
+    },
+    {
+      "at": 1794470283426,
+      "line": "[BADMINTON-DIAG] update: racket HIT detected! clip=ForehandClear speed=4.50 pos=1.14,1.33,4.15, velocity=-0.94,2.57,-3.57"
+    },
+    {
+      "at": 1794470283427,
+      "line": "[BADMINTON-DIAG] applyHit: launch#4 rally#3 src=applyHit-red player=red clip=ForehandClear speed=4.50 point=(1.14,1.33,4.15) velocity=(-0.94,2.57,-3.57)"
+    },
+    {
+      "at": 1794470283427,
+      "line": "[BADMINTON-DIAG] physics.launch: pos=(1.22,1.37,3.86) vel=(-0.94,2.57,-3.57)"
+    },
+    {
+      "at": 1794470283428,
+      "line": "[BADMINTON-DIAG] applyHit: after launch launch#4 rally#3 player=red pos=1.22,1.37,3.86, vel=-0.94,2.57,-3.57"
+    },
+    {
+      "at": 1794470283708,
+      "line": "[BADMINTON-DIAG] update: flying pos=(0.96,1.70,2.85) vel=(-0.94,-0.21,-3.57) visual=(0.96,1.70,2.85) world=(0.96,1.70,2.85) rally=3 launch=4 src=applyHit-red"
+    },
+    {
+      "at": 1794470284207,
+      "line": "[BADMINTON-DIAG] update: flying pos=(0.49,0.37,1.06) vel=(-0.94,-5.11,-3.57) visual=(0.49,0.37,1.06) world=(0.49,0.37,1.06) rally=3 launch=4 src=applyHit-red"
+    },
+    {
+      "at": 1794470284280,
+      "line": "[BADMINTON-DIAG] handleRallyEnd: after awardPoint rally=3 winner=blue, new server=blue, serveSide=right, score=1-2, pendingServe=false (tetap false, tidak otomatis)"
+    },
+    {
+      "at": 1794470285492,
+      "line": "[BADMINTON-DIAG] launchPracticeFeed: launch#5 rally#4 src=practice-feed offset=1.20,0.50,3.60 velocity=0.10,4.85,1.11"
+    },
+    {
+      "at": 1794470285493,
+      "line": "[BADMINTON-DIAG] physics.launch: pos=(1.20,0.50,3.60) vel=(0.10,4.85,1.11)"
+    },
+    {
+      "at": 1794470285503,
+      "line": "[BADMINTON-DIAG] launchPracticeFeed: after launch launch#5 rally#4 pos=1.20,0.50,3.60 phase=flying"
+    },
+    {
+      "at": 1794470285508,
+      "line": "[BADMINTON-DIAG] update: flying pos=(1.20,0.58,3.62) vel=(0.10,4.69,1.11) visual=(1.20,0.58,3.62) world=(1.20,0.58,3.62) rally=4 launch=5 src=practice-feed"
+    },
+    {
+      "at": 1794470285694,
+      "line": "[BADMINTON-DIAG] SwingInput: key=Space repeat=false -> handler"
+    },
+    {
+      "at": 1794470285697,
+      "line": "[BADMINTON-DIAG] onSwingInput requestSwing hasil: true"
+    },
+    {
+      "at": 1794470286008,
+      "line": "[BADMINTON-DIAG] red hit incoming shuttle velocity=(0.10,-0.22,1.11) phase=flying"
+    },
+    {
+      "at": 1794470286009,
+      "line": "[BADMINTON-DIAG] update: racket HIT detected! clip=ForehandClear speed=4.50 pos=1.12,1.41,4.13, velocity=-0.92,3.30,-2.92"
+    },
+    {
+      "at": 1794470286010,
+      "line": "[BADMINTON-DIAG] applyHit: launch#6 rally#4 src=applyHit-red player=red clip=ForehandClear speed=4.50 point=(1.12,1.41,4.13) velocity=(-0.92,3.30,-2.92)"
+    },
+    {
+      "at": 1794470286011,
+      "line": "[BADMINTON-DIAG] physics.launch: pos=(1.25,1.70,4.17) vel=(-0.92,3.30,-2.92)"
+    },
+    {
+      "at": 1794470286011,
+      "line": "[BADMINTON-DIAG] applyHit: after launch launch#6 rally#4 player=red pos=1.25,1.70,4.17, vel=-0.92,3.30,-2.92"
+    },
+    {
+      "at": 1794470286012,
+      "line": "[BADMINTON-DIAG] update: flying pos=(1.25,1.70,4.17) vel=(-0.92,3.30,-2.92) visual=(1.25,1.70,4.17) world=(1.25,1.70,4.17) rally=4 launch=6 src=applyHit-red"
+    },
+    {
+      "at": 1794470286523,
+      "line": "[BADMINTON-DIAG] update: flying pos=(0.78,2.09,2.67) vel=(-0.92,-1.77,-2.92) visual=(0.78,2.09,2.67) world=(0.78,2.09,2.67) rally=4 launch=6 src=applyHit-red"
+    },
+    {
+      "at": 1794470287028,
+      "line": "[BADMINTON-DIAG] handleRallyEnd: after awardPoint rally=4 winner=blue, new server=blue, serveSide=left, score=1-3, pendingServe=false (tetap false, tidak otomatis)"
+    },
+    {
+      "at": 1794470288241,
+      "line": "[BADMINTON-DIAG] launchPracticeFeed: launch#7 rally#5 src=practice-feed offset=1.20,0.50,3.60 velocity=0.10,4.85,1.11"
+    },
+    {
+      "at": 1794470288242,
+      "line": "[BADMINTON-DIAG] physics.launch: pos=(1.20,0.50,3.60) vel=(0.10,4.85,1.11)"
+    },
+    {
+      "at": 1794470288243,
+      "line": "[BADMINTON-DIAG] launchPracticeFeed: after launch launch#7 rally#5 pos=1.20,0.50,3.60 phase=flying"
+    },
+    {
+      "at": 1794470288259,
+      "line": "[BADMINTON-DIAG] update: flying pos=(1.20,0.58,3.62) vel=(0.10,4.69,1.11) visual=(1.20,0.58,3.62) world=(1.20,0.58,3.62) rally=5 launch=7 src=practice-feed"
+    },
+    {
+      "at": 1794470288597,
+      "line": "[BADMINTON-DIAG] SwingInput: key=Space repeat=false -> handler"
+    },
+    {
+      "at": 1794470288599,
+      "line": "[BADMINTON-DIAG] onSwingInput requestSwing hasil: true"
+    },
+    {
+      "at": 1794470288774,
+      "line": "[BADMINTON-DIAG] update: flying pos=(1.25,1.69,4.19) vel=(0.10,-0.38,1.11) visual=(1.25,1.69,4.19) world=(1.25,1.69,4.19) rally=5 launch=7 src=practice-feed"
+    },
+    {
+      "at": 1794470288858,
+      "line": "[BADMINTON-DIAG] red hit incoming shuttle velocity=(0.10,-1.20,1.11) phase=flying"
+    },
+    {
+      "at": 1794470288859,
+      "line": "[BADMINTON-DIAG] update: racket HIT detected! clip=ForehandClear speed=4.50 pos=1.13,1.36,4.14, velocity=-0.95,2.90,-3.31"
+    },
+    {
+      "at": 1794470288860,
+      "line": "[BADMINTON-DIAG] applyHit: launch#8 rally#5 src=applyHit-red player=red clip=ForehandClear speed=4.50 point=(1.13,1.36,4.14) velocity=(-0.95,2.90,-3.31)"
+    },
+    {
+      "at": 1794470288861,
+      "line": "[BADMINTON-DIAG] physics.launch: pos=(1.26,1.63,4.29) vel=(-0.95,2.90,-3.31)"
+    },
+    {
+      "at": 1794470288861,
+      "line": "[BADMINTON-DIAG] applyHit: after launch launch#8 rally#5 player=red pos=1.26,1.63,4.29, vel=-0.95,2.90,-3.31"
+    },
+    {
+      "at": 1794470289274,
+      "line": "[BADMINTON-DIAG] update: flying pos=(0.87,1.98,2.91) vel=(-0.95,-1.19,-3.31) visual=(0.87,1.98,2.91) world=(0.87,1.98,2.91) rally=5 launch=8 src=applyHit-red"
+    },
+    {
+      "at": 1794470289774,
+      "line": "[BADMINTON-DIAG] update: flying pos=(0.40,0.16,1.25) vel=(-0.95,-6.10,-3.31) visual=(0.40,0.16,1.25) world=(0.40,0.16,1.25) rally=5 launch=8 src=applyHit-red"
+    },
+    {
+      "at": 1794470289815,
+      "line": "[BADMINTON-DIAG] handleRallyEnd: after awardPoint rally=5 winner=blue, new server=blue, serveSide=right, score=1-4, pendingServe=false (tetap false, tidak otomatis)"
+    },
+    {
+      "at": 1794470291027,
+      "line": "[BADMINTON-DIAG] launchPracticeFeed: launch#9 rally#6 src=practice-feed offset=1.20,0.50,3.60 velocity=0.10,4.85,1.11"
+    },
+    {
+      "at": 1794470291027,
+      "line": "[BADMINTON-DIAG] physics.launch: pos=(1.20,0.50,3.60) vel=(0.10,4.85,1.11)"
+    },
+    {
+      "at": 1794470291028,
+      "line": "[BADMINTON-DIAG] launchPracticeFeed: after launch launch#9 rally#6 pos=1.20,0.50,3.60 phase=flying"
+    },
+    {
+      "at": 1794470291042,
+      "line": "[BADMINTON-DIAG] update: flying pos=(1.20,0.58,3.62) vel=(0.10,4.69,1.11) visual=(1.20,0.58,3.62) world=(1.20,0.58,3.62) rally=6 launch=9 src=practice-feed"
+    },
+    {
+      "at": 1794470291540,
+      "line": "[BADMINTON-DIAG] update: flying pos=(1.25,1.70,4.17) vel=(0.10,-0.22,1.11) visual=(1.25,1.70,4.17) world=(1.25,1.70,4.17) rally=6 launch=9 src=practice-feed"
+    },
+    {
+      "at": 1794470291597,
+      "line": "[BADMINTON-DIAG] SwingInput: key=Space repeat=false -> handler"
+    },
+    {
+      "at": 1794470291601,
+      "line": "[BADMINTON-DIAG] onSwingInput requestSwing hasil: true"
+    },
+    {
+      "at": 1794470291757,
+      "line": "[BADMINTON-DIAG] red hit incoming shuttle velocity=(0.10,-2.34,1.11) phase=flying"
+    },
+    {
+      "at": 1794470291758,
+      "line": "[BADMINTON-DIAG] update: racket HIT detected! clip=ForehandClear speed=4.50 pos=1.17,1.28,4.18, velocity=-0.88,1.90,-3.98"
+    },
+    {
+      "at": 1794470291759,
+      "line": "[BADMINTON-DIAG] applyHit: launch#10 rally#6 src=applyHit-red player=red clip=ForehandClear speed=4.50 point=(1.17,1.28,4.18) velocity=(-0.88,1.90,-3.98)"
+    },
+    {
+      "at": 1794470291760,
+      "line": "[BADMINTON-DIAG] physics.launch: pos=(1.27,1.42,4.42) vel=(-0.88,1.90,-3.98)"
+    },
+    {
+      "at": 1794470291760,
+      "line": "[BADMINTON-DIAG] applyHit: after launch launch#10 rally#6 player=red pos=1.27,1.42,4.42, vel=-0.88,1.90,-3.98"
+    },
+    {
+      "at": 1794470292041,
+      "line": "[BADMINTON-DIAG] update: flying pos=(1.02,1.57,3.29) vel=(-0.88,-0.88,-3.98) visual=(1.02,1.57,3.29) world=(1.02,1.57,3.29) rally=6 launch=10 src=applyHit-red"
+    },
+    {
+      "at": 1794470292530,
+      "line": "[BADMINTON-DIAG] handleRallyEnd: after awardPoint rally=6 winner=blue, new server=blue, serveSide=left, score=1-5, pendingServe=false (tetap false, tidak otomatis)"
+    },
+    {
+      "at": 1794470293743,
+      "line": "[BADMINTON-DIAG] launchPracticeFeed: launch#11 rally#7 src=practice-feed offset=1.20,0.50,3.60 velocity=0.10,4.85,1.11"
+    },
+    {
+      "at": 1794470293744,
+      "line": "[BADMINTON-DIAG] physics.launch: pos=(1.20,0.50,3.60) vel=(0.10,4.85,1.11)"
+    },
+    {
+      "at": 1794470293745,
+      "line": "[BADMINTON-DIAG] launchPracticeFeed: after launch launch#11 rally#7 pos=1.20,0.50,3.60 phase=flying"
+    },
+    {
+      "at": 1794470293758,
+      "line": "[BADMINTON-DIAG] update: flying pos=(1.20,0.58,3.62) vel=(0.10,4.69,1.11) visual=(1.20,0.58,3.62) world=(1.20,0.58,3.62) rally=7 launch=11 src=practice-feed"
+    },
+    {
+      "at": 1794470294257,
+      "line": "[BADMINTON-DIAG] update: flying pos=(1.25,1.70,4.17) vel=(0.10,-0.22,1.11) visual=(1.25,1.70,4.17) world=(1.25,1.70,4.17) rally=7 launch=11 src=practice-feed"
+    },
+    {
+      "at": 1794470294651,
+      "line": "[BADMINTON-DIAG] SwingInput: key=Space repeat=false -> handler"
+    },
+    {
+      "at": 1794470294653,
+      "line": "[BADMINTON-DIAG] onSwingInput requestSwing hasil: true"
+    },
+    {
+      "at": 1794470294758,
+      "line": "[BADMINTON-DIAG] update: flying pos=(1.30,0.36,4.73) vel=(0.10,-5.13,1.11) visual=(1.30,0.36,4.73) world=(1.30,0.36,4.73) rally=7 launch=11 src=practice-feed"
+    },
+    {
+      "at": 1794470294831,
+      "line": "[BADMINTON-DIAG] handleRallyEnd: after awardPoint rally=7 winner=blue, new server=blue, serveSide=right, score=1-6, pendingServe=false (tetap false, tidak otomatis)"
+    },
+    {
+      "at": 1794470296044,
+      "line": "[BADMINTON-DIAG] launchPracticeFeed: launch#12 rally#8 src=practice-feed offset=1.20,0.50,3.60 velocity=0.10,4.85,1.11"
+    },
+    {
+      "at": 1794470296044,
+      "line": "[BADMINTON-DIAG] physics.launch: pos=(1.20,0.50,3.60) vel=(0.10,4.85,1.11)"
+    },
+    {
+      "at": 1794470296045,
+      "line": "[BADMINTON-DIAG] launchPracticeFeed: after launch launch#12 rally#8 pos=1.20,0.50,3.60 phase=flying"
+    },
+    {
+      "at": 1794470296059,
+      "line": "[BADMINTON-DIAG] update: flying pos=(1.20,0.58,3.62) vel=(0.10,4.69,1.11) visual=(1.20,0.58,3.62) world=(1.20,0.58,3.62) rally=8 launch=12 src=practice-feed"
+    },
+    {
+      "at": 1794470296558,
+      "line": "[BADMINTON-DIAG] update: flying pos=(1.25,1.70,4.17) vel=(0.10,-0.21,1.11) visual=(1.25,1.70,4.17) world=(1.25,1.70,4.17) rally=8 launch=12 src=practice-feed"
+    },
+    {
+      "at": 1794470297058,
+      "line": "[BADMINTON-DIAG] update: flying pos=(1.30,0.36,4.73) vel=(0.10,-5.12,1.11) visual=(1.30,0.36,4.73) world=(1.30,0.36,4.73) rally=8 launch=12 src=practice-feed"
+    },
+    {
+      "at": 1794470297127,
+      "line": "[BADMINTON-DIAG] handleRallyEnd: after awardPoint rally=8 winner=blue, new server=blue, serveSide=left, score=1-7, pendingServe=false (tetap false, tidak otomatis)"
+    }
+  ],
+  "rawLogCount": 248
+}

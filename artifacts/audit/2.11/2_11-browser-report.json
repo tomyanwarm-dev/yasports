@@ -1,0 +1,314 @@
+{
+  "results": [
+    {
+      "name": "Elemen banner & scoreboard terpasang sekali",
+      "ok": true,
+      "detail": "{\"count\":1,\"hud\":\"0\"}"
+    },
+    {
+      "name": "Banner awal tersembunyi (aria-hidden=true)",
+      "ok": true,
+      "detail": "true"
+    },
+    {
+      "name": "Banner awal tidak terlihat (visibility hidden)",
+      "ok": true,
+      "detail": "hidden"
+    },
+    {
+      "name": "Overlay tidak menangkap input (pointer-events none)",
+      "ok": true,
+      "detail": "none"
+    },
+    {
+      "name": "Banner di atas canvas (z-index 40)",
+      "ok": true,
+      "detail": "40"
+    },
+    {
+      "name": "Banner tidak menutupi gameplay saat idle",
+      "ok": true,
+      "detail": "div.ui-layer"
+    },
+    {
+      "name": "Poin Red: banner memakai tema Red",
+      "ok": true,
+      "detail": "red"
+    },
+    {
+      "name": "Poin Red: teks \"RED SCORES!\"",
+      "ok": true,
+      "detail": "RED SCORES!"
+    },
+    {
+      "name": "Poin Red: banner aktif & terlihat",
+      "ok": true,
+      "detail": "{\"a\":true,\"aria\":\"false\",\"v\":\"visible\"}"
+    },
+    {
+      "name": "Poin Red: scoreboard langsung naik",
+      "ok": true,
+      "detail": "1 vs 1"
+    },
+    {
+      "name": "Poin Red: angka scoreboard dianimasikan",
+      "ok": true,
+      "detail": "true"
+    },
+    {
+      "name": "Poin Red: sisi Red di-highlight",
+      "ok": true,
+      "detail": "true"
+    },
+    {
+      "name": "Poin Red: tepat satu notifikasi",
+      "ok": true,
+      "detail": "1"
+    },
+    {
+      "name": "Poin Red: banner menghilang otomatis",
+      "ok": true,
+      "detail": "{\"aria\":\"true\",\"v\":\"hidden\"}"
+    },
+    {
+      "name": "Poin Red: banner menampilkan skor terbaru",
+      "ok": true,
+      "detail": "01-00"
+    },
+    {
+      "name": "Poin Red: gameplay tidak tertutup setelah hide",
+      "ok": true,
+      "detail": "div.ui-layer"
+    },
+    {
+      "name": "Poin Blue: banner memakai tema Blue",
+      "ok": true,
+      "detail": "blue"
+    },
+    {
+      "name": "Poin Blue: teks \"BLUE SCORES!\"",
+      "ok": true,
+      "detail": "BLUE SCORES!"
+    },
+    {
+      "name": "Poin Blue: scoreboard naik",
+      "ok": true,
+      "detail": "1 vs 1"
+    },
+    {
+      "name": "Poin Blue: angka scoreboard dianimasikan",
+      "ok": true,
+      "detail": "true"
+    },
+    {
+      "name": "Poin Blue: sisi Blue di-highlight",
+      "ok": true,
+      "detail": "true"
+    },
+    {
+      "name": "Poin Blue: tepat satu notifikasi",
+      "ok": true,
+      "detail": "1"
+    },
+    {
+      "name": "Poin Blue: banner menghilang otomatis",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Poin Blue: banner menampilkan skor terbaru",
+      "ok": true,
+      "detail": "01-01"
+    },
+    {
+      "name": "Poin beruntun: hanya satu banner di DOM",
+      "ok": true,
+      "detail": "1"
+    },
+    {
+      "name": "Poin beruntun: banner terakhir menampilkan Blue",
+      "ok": true,
+      "detail": "blue"
+    },
+    {
+      "name": "Poin beruntun: skor terbaru benar",
+      "ok": true,
+      "detail": "02-02 vs 2-2"
+    },
+    {
+      "name": "Poin beruntun: dua poin = dua notifikasi, tidak dobel",
+      "ok": true,
+      "detail": "2"
+    },
+    {
+      "name": "Servis pertama dimulai lewat Enter",
+      "ok": true,
+      "detail": "[BADMINTON-DIAG] officialServe: persiapan server=blue serveSide=right clip=ServeShort kontak@0.867s, shuttle pindah ke tangan kiri server"
+    },
+    {
+      "name": "Rally nyata: poin diberikan MatchManager",
+      "ok": true,
+      "detail": "[BADMINTON-DIAG] handleRallyEnd: after awardPoint rally=1 winner=blue, new server=blue, serveSide=left, score=2-3, pendingServe=false, autoServeDelay=2.72s"
+    },
+    {
+      "name": "Rally nyata: servis berikutnya dijadwalkan (autoServeDelay)",
+      "ok": true,
+      "detail": "[BADMINTON-DIAG] handleRallyEnd: after awardPoint rally=1 winner=blue, new server=blue, serveSide=left, score=2-3, pendingServe=false, autoServeDelay=2.72s"
+    },
+    {
+      "name": "Rally nyata: banner pemain yang benar",
+      "ok": true,
+      "detail": "blue vs blue"
+    },
+    {
+      "name": "Servis berikutnya otomatis setelah banner (tanpa Enter)",
+      "ok": true,
+      "detail": "[BADMINTON-DIAG] tickAutoServe: selebrasi selesai, servis berikutnya otomatis server=blue, serveSide=left, status=playing"
+    },
+    {
+      "name": "Siklus official serve yang sama dipakai ulang",
+      "ok": true,
+      "detail": "[BADMINTON-DIAG] officialServe: persiapan server=blue serveSide=left clip=ServeShort kontak@0.867s, shuttle pindah ke tangan kiri server"
+    },
+    {
+      "name": "Tidak ada input pemain di antara banner dan servis otomatis",
+      "ok": true,
+      "detail": "poin baru: 0"
+    },
+    {
+      "name": "Tepat satu elemen banner sepanjang sesi",
+      "ok": true,
+      "detail": "1"
+    },
+    {
+      "name": "Tidak ada error JavaScript di browser",
+      "ok": true,
+      "detail": ""
+    }
+  ],
+  "errors": [],
+  "knownDiagnostics": [
+    "[BADMINTON-DIAG] racketPro[blue]: hierarki tidak bersih — BadmintonRacket=2, RacketFrame=1, mesh lama tersisa=0",
+    "[BADMINTON-DIAG] racketPro[red]: hierarki tidak bersih — BadmintonRacket=2, RacketFrame=1, mesh lama tersisa=0"
+  ],
+  "logs": [
+    "[vite] connecting...",
+    "[vite] connected.",
+    "[BADMINTON-DIAG] update: physics phase changed null -> idle, pos=0.00,1.50,3.50, vel=0.00,0.00,0.00, rally=0, launch=0, src=-",
+    "[BADMINTON-DIAG] update: pendingServe changed null -> false",
+    "[BADMINTON-DIAG] update: awaitingServeEnter changed null -> false",
+    "[BADMINTON-DIAG] update: feedArmed changed null -> false",
+    "[BADMINTON-DIAG] shuttlecock: GLB loaded url=/models/badminton/equipment/BadmintonShuttlecock.glb, meshes=24, dims=(0.0581,0.0710,0.0581) x1.2, center=((0.0003,0.0251,-0.0001)) dipusatkan, orientasi cork=-Y (bawah) bulu=+Y (atas)",
+    "[BADMINTON-DIAG] racketPro: cache loader sukses url=/models/badminton/equipment/BadmintonRacket_Pro_Ready.glb (satu kali per halaman), root=\"BadmintonRacket\", node \"RacketFrame\" valid",
+    "[BADMINTON-DIAG] racketPro[blue]: hierarki tidak bersih — BadmintonRacket=2, RacketFrame=1, mesh lama tersisa=0",
+    "[BADMINTON-DIAG] racketPro[blue]: SUKSES — root=\"BadmintonRacket\" child dari \"RightHand\", RacketFrame=1 node, raket lama terlepas (mesh lama tersisa=0), transform lokal pos=(-0.0000,0.0700,-0.0000) rot=(52.9,55.0,173.0)deg scale=(-1.00,-1.00,-1.00), world RacketFrame=(-1.6300,1.1000,-4.6000)",
+    "[BADMINTON-DIAG] racketPro[red]: hierarki tidak bersih — BadmintonRacket=2, RacketFrame=1, mesh lama tersisa=0",
+    "[BADMINTON-DIAG] racketPro[red]: SUKSES — root=\"BadmintonRacket\" child dari \"RightHand\", RacketFrame=1 node, raket lama terlepas (mesh lama tersisa=0), transform lokal pos=(-0.0000,0.0700,-0.0000) rot=(52.9,55.0,173.0)deg scale=(-1.00,-1.00,-1.00), world RacketFrame=(1.6300,1.1000,4.6000)",
+    "[skor] Game 1: Red 1 - 0 Blue",
+    "[skor] Servis: red dari sisi left",
+    "[skor] Game 1: Red 1 - 1 Blue",
+    "[skor] Servis: blue dari sisi left",
+    "[skor] Game 1: Red 2 - 1 Blue",
+    "[skor] Servis: red dari sisi right",
+    "[skor] Game 1: Red 2 - 2 Blue",
+    "[skor] Servis: blue dari sisi right",
+    "[BADMINTON-DIAG] SwingInput: key=Enter repeat=false -> handler",
+    "[BADMINTON-DIAG] onStartMatchInput: status=ready, server=blue, serveSide=right, score=2-2, phase=idle, serveState=idle, pendingServe=false, awaitingServeEnter=false",
+    "[skor] Game 1: Red 2 - 2 Blue",
+    "[skor] Servis: blue dari sisi right",
+    "[BADMINTON-DIAG] onStartMatchInput: MATCH START, status=playing, server=blue, serveSide=right, pendingServe=true (servis pertama)",
+    "[BADMINTON-DIAG] update: pendingServe changed false -> true",
+    "[BADMINTON-DIAG] update: pendingServe=true, isReadyToLaunch=true, hitTestMode=false, feedArmed=false, memulai persiapan official serve",
+    "[BADMINTON-DIAG] officialServe: persiapan server=blue serveSide=right clip=ServeShort kontak@0.867s, shuttle pindah ke tangan kiri server",
+    "[BADMINTON-DIAG] update: pendingServe changed true -> false",
+    "[BADMINTON-DIAG] officialServe: surfaceSample t=0.750s clip=ServeShort@0.733s scale=1.000 distance=1.0870m shuttle=-2.323,1.321,-4.275 closest=-3.263,1.862,-4.348",
+    "[BADMINTON-DIAG] officialServe: surfaceSample t=0.767s clip=ServeShort@0.750s scale=1.000 distance=1.1051m shuttle=-2.303,1.319,-4.276 closest=-3.265,1.860,-4.340",
+    "[BADMINTON-DIAG] officialServe: surfaceSample t=0.817s clip=ServeShort@0.800s scale=1.000 distance=0.7383m shuttle=-2.416,1.283,-4.206 closest=-2.731,1.942,-4.314",
+    "[BADMINTON-DIAG] officialServe: surfaceSample t=0.850s clip=ServeShort@0.833s scale=1.000 distance=0.1903m shuttle=-2.532,1.288,-4.201 closest=-2.445,1.457,-4.200",
+    "[BADMINTON-DIAG] officialServe: surfaceSample t=0.883s clip=ServeShort@0.867s scale=1.000 distance=0.0200m shuttle=-2.577,1.302,-4.221 closest=-2.558,1.301,-4.214",
+    "[BADMINTON-DIAG] officialServe: KONTAK meshDistance=0.0200m t=0.883s clipTime=0.867s racketSurfaceSpeed=20.49m/s pos=-2.577,1.302,-4.221",
+    "[BADMINTON-DIAG] officialServe: launch#1 rally#1 player=blue t=0.883s racketSurfaceSpeed=20.49m/s surfaceDistance=0.0200m pos=-2.577,1.302,-4.221 velocity=1.13,3.34,7.47",
+    "[BADMINTON-DIAG] physics.launch: pos=(-2.58,1.30,-4.22) vel=(1.13,3.34,7.47)",
+    "[BADMINTON-DIAG] officialServe: after launch launch#1 pos=-2.58,1.30,-4.22 phase=flying velocity=1.13,3.34,7.47",
+    "[BADMINTON-DIAG] update: flying pos=(-2.58,1.30,-4.22) vel=(1.13,3.34,7.47) visual=(-2.58,1.30,-4.22) world=(-2.58,1.30,-4.22) rally=1 launch=1 src=official-serve",
+    "[BADMINTON-DIAG] update: physics phase changed idle -> flying, pos=-2.56,1.36,-4.10, vel=1.13,3.18,7.47, rally=1, launch=1, src=official-serve",
+    "[BADMINTON-DIAG] update: flying pos=(-2.54,1.41,-3.97) vel=(1.13,3.01,7.47) visual=(-2.54,1.41,-3.97) world=(-2.54,1.41,-3.97) rally=1 launch=1 src=official-serve",
+    "[BADMINTON-DIAG] update: flying pos=(-2.50,1.50,-3.72) vel=(1.13,2.69,7.47) visual=(-2.50,1.50,-3.72) world=(-2.50,1.50,-3.72) rally=1 launch=1 src=official-serve",
+    "[BADMINTON-DIAG] update: flying pos=(-2.46,1.59,-3.47) vel=(1.13,2.36,7.47) visual=(-2.46,1.59,-3.47) world=(-2.46,1.59,-3.47) rally=1 launch=1 src=official-serve",
+    "[BADMINTON-DIAG] update: flying pos=(-2.43,1.66,-3.22) vel=(1.13,2.03,7.47) visual=(-2.43,1.66,-3.22) world=(-2.43,1.66,-3.22) rally=1 launch=1 src=official-serve",
+    "[BADMINTON-DIAG] update: flying pos=(-2.39,1.72,-2.98) vel=(1.13,1.71,7.47) visual=(-2.39,1.72,-2.98) world=(-2.39,1.72,-2.98) rally=1 launch=1 src=official-serve",
+    "[BADMINTON-DIAG] update: flying pos=(-2.35,1.77,-2.73) vel=(1.13,1.38,7.47) visual=(-2.35,1.77,-2.73) world=(-2.35,1.77,-2.73) rally=1 launch=1 src=official-serve",
+    "[BADMINTON-DIAG] update: flying pos=(-2.31,1.82,-2.48) vel=(1.13,1.05,7.47) visual=(-2.31,1.82,-2.48) world=(-2.31,1.82,-2.48) rally=1 launch=1 src=official-serve",
+    "[BADMINTON-DIAG] update: flying pos=(-2.27,1.84,-2.23) vel=(1.13,0.73,7.47) visual=(-2.27,1.84,-2.23) world=(-2.27,1.84,-2.23) rally=1 launch=1 src=official-serve",
+    "[BADMINTON-DIAG] update: flying pos=(-2.24,1.86,-1.98) vel=(1.13,0.40,7.47) visual=(-2.24,1.86,-1.98) world=(-2.24,1.86,-1.98) rally=1 launch=1 src=official-serve",
+    "[BADMINTON-DIAG] update: flying pos=(-2.20,1.87,-1.73) vel=(1.13,0.07,7.47) visual=(-2.20,1.87,-1.73) world=(-2.20,1.87,-1.73) rally=1 launch=1 src=official-serve",
+    "[BADMINTON-DIAG] update: flying pos=(-2.16,1.87,-1.48) vel=(1.13,-0.26,7.47) visual=(-2.16,1.87,-1.48) world=(-2.16,1.87,-1.48) rally=1 launch=1 src=official-serve",
+    "[BADMINTON-DIAG] update: flying pos=(-2.12,1.85,-1.23) vel=(1.13,-0.58,7.47) visual=(-2.12,1.85,-1.23) world=(-2.12,1.85,-1.23) rally=1 launch=1 src=official-serve",
+    "[BADMINTON-DIAG] update: flying pos=(-2.09,1.83,-0.98) vel=(1.13,-0.91,7.47) visual=(-2.09,1.83,-0.98) world=(-2.09,1.83,-0.98) rally=1 launch=1 src=official-serve",
+    "[BADMINTON-DIAG] update: flying pos=(-2.05,1.79,-0.73) vel=(1.13,-1.24,7.47) visual=(-2.05,1.79,-0.73) world=(-2.05,1.79,-0.73) rally=1 launch=1 src=official-serve",
+    "[BADMINTON-DIAG] update: flying pos=(-2.01,1.75,-0.48) vel=(1.13,-1.56,7.47) visual=(-2.01,1.75,-0.48) world=(-2.01,1.75,-0.48) rally=1 launch=1 src=official-serve",
+    "[BADMINTON-DIAG] update: flying pos=(-1.97,1.69,-0.23) vel=(1.13,-1.89,7.47) visual=(-1.97,1.69,-0.23) world=(-1.97,1.69,-0.23) rally=1 launch=1 src=official-serve",
+    "[BADMINTON-DIAG] update: flying pos=(-1.93,1.62,0.01) vel=(1.13,-2.22,7.47) visual=(-1.93,1.62,0.01) world=(-1.93,1.62,0.01) rally=1 launch=1 src=official-serve",
+    "[BADMINTON-DIAG] update: flying pos=(-1.90,1.54,0.26) vel=(1.13,-2.54,7.47) visual=(-1.90,1.54,0.26) world=(-1.90,1.54,0.26) rally=1 launch=1 src=official-serve",
+    "[BADMINTON-DIAG] update: flying pos=(-1.86,1.45,0.51) vel=(1.13,-2.87,7.47) visual=(-1.86,1.45,0.51) world=(-1.86,1.45,0.51) rally=1 launch=1 src=official-serve",
+    "[BADMINTON-DIAG] update: flying pos=(-1.82,1.35,0.76) vel=(1.13,-3.20,7.47) visual=(-1.82,1.35,0.76) world=(-1.82,1.35,0.76) rally=1 launch=1 src=official-serve",
+    "[BADMINTON-DIAG] update: flying pos=(-1.78,1.24,1.01) vel=(1.13,-3.53,7.47) visual=(-1.78,1.24,1.01) world=(-1.78,1.24,1.01) rally=1 launch=1 src=official-serve",
+    "[BADMINTON-DIAG] update: flying pos=(-1.75,1.11,1.26) vel=(1.13,-3.85,7.47) visual=(-1.75,1.11,1.26) world=(-1.75,1.11,1.26) rally=1 launch=1 src=official-serve",
+    "[BADMINTON-DIAG] update: flying pos=(-1.71,0.98,1.51) vel=(1.13,-4.18,7.47) visual=(-1.71,0.98,1.51) world=(-1.71,0.98,1.51) rally=1 launch=1 src=official-serve",
+    "[BADMINTON-DIAG] update: flying pos=(-1.67,0.84,1.76) vel=(1.13,-4.51,7.47) visual=(-1.67,0.84,1.76) world=(-1.67,0.84,1.76) rally=1 launch=1 src=official-serve",
+    "[BADMINTON-DIAG] update: flying pos=(-1.63,0.68,2.01) vel=(1.13,-4.83,7.47) visual=(-1.63,0.68,2.01) world=(-1.63,0.68,2.01) rally=1 launch=1 src=official-serve",
+    "[BADMINTON-DIAG] update: flying pos=(-1.59,0.51,2.26) vel=(1.13,-5.16,7.47) visual=(-1.59,0.51,2.26) world=(-1.59,0.51,2.26) rally=1 launch=1 src=official-serve",
+    "[BADMINTON-DIAG] update: flying pos=(-1.56,0.34,2.51) vel=(1.13,-5.49,7.47) visual=(-1.56,0.34,2.51) world=(-1.56,0.34,2.51) rally=1 launch=1 src=official-serve",
+    "[BADMINTON-DIAG] update: flying pos=(-1.52,0.15,2.76) vel=(1.13,-5.81,7.47) visual=(-1.52,0.15,2.76) world=(-1.52,0.15,2.76) rally=1 launch=1 src=official-serve",
+    "[BADMINTON-DIAG] physics.stop: phase flying -> resetting, pos=(-1.50,0.05,2.88) vel=(1.13,-5.98,7.47) resetDelay=1.2",
+    "[BADMINTON-DIAG] update: physics phase changed flying -> resetting, pos=-1.50,0.05,2.88, vel=0.00,0.00,0.00, rally=1, launch=1, src=official-serve",
+    "[BADMINTON-DIAG] update: physics event landed, pos=-1.50,0.05,2.88, velocity=0.00,0.00,0.00",
+    "[BADMINTON-DIAG] handleRallyEnd: rally=1 event=landed, pos=(-1.50,0.05,2.88), winner=blue",
+    "[skor] Game 1: Red 2 - 3 Blue",
+    "[skor] Servis: blue dari sisi left",
+    "[BADMINTON-DIAG] handleRallyEnd: after awardPoint rally=1 winner=blue, new server=blue, serveSide=left, score=2-3, pendingServe=false, autoServeDelay=2.72s",
+    "[BADMINTON-DIAG] handleRallyEnd: POINT PAUSED — selebrasi poin berjalan, servis berikutnya otomatis setelah selesai",
+    "[BADMINTON-DIAG] physics.resetTimer: phase=resetting resetTimer=1.18 pos=(-1.50,0.05,2.88) isReadyToLaunch=false",
+    "[BADMINTON-DIAG] update: awaitingServeEnter changed false -> true",
+    "[BADMINTON-DIAG] physics.resetTimer: phase=resetting resetTimer=1.08 pos=(-1.50,0.05,2.88) isReadyToLaunch=false",
+    "[BADMINTON-DIAG] physics.resetTimer: phase=resetting resetTimer=1.02 pos=(-1.50,0.05,2.88) isReadyToLaunch=false",
+    "[BADMINTON-DIAG] physics.resetTimer: phase=resetting resetTimer=1.00 pos=(-1.50,0.05,2.88) isReadyToLaunch=false",
+    "[BADMINTON-DIAG] physics.resetTimer: phase=resetting resetTimer=0.97 pos=(-1.50,0.05,2.88) isReadyToLaunch=false",
+    "[BADMINTON-DIAG] physics.resetTimer: phase=resetting resetTimer=0.93 pos=(-1.50,0.05,2.88) isReadyToLaunch=false",
+    "[BADMINTON-DIAG] physics.resetTimer: phase=resetting resetTimer=0.90 pos=(-1.50,0.05,2.88) isReadyToLaunch=false",
+    "[BADMINTON-DIAG] physics.resetTimer: phase=resetting resetTimer=0.87 pos=(-1.50,0.05,2.88) isReadyToLaunch=false",
+    "[BADMINTON-DIAG] physics.resetTimer: phase=resetting resetTimer=0.83 pos=(-1.50,0.05,2.88) isReadyToLaunch=false",
+    "[BADMINTON-DIAG] physics.resetTimer: phase=resetting resetTimer=0.80 pos=(-1.50,0.05,2.88) isReadyToLaunch=false",
+    "[BADMINTON-DIAG] physics.resetTimer: phase=resetting resetTimer=0.77 pos=(-1.50,0.05,2.88) isReadyToLaunch=false",
+    "[BADMINTON-DIAG] physics.resetTimer: phase=resetting resetTimer=0.73 pos=(-1.50,0.05,2.88) isReadyToLaunch=false",
+    "[BADMINTON-DIAG] physics.resetTimer: phase=resetting resetTimer=0.70 pos=(-1.50,0.05,2.88) isReadyToLaunch=false",
+    "[BADMINTON-DIAG] physics.resetTimer: phase=resetting resetTimer=0.67 pos=(-1.50,0.05,2.88) isReadyToLaunch=false",
+    "[BADMINTON-DIAG] physics.resetTimer: phase=resetting resetTimer=0.63 pos=(-1.50,0.05,2.88) isReadyToLaunch=false",
+    "[BADMINTON-DIAG] physics.resetTimer: phase=resetting resetTimer=0.60 pos=(-1.50,0.05,2.88) isReadyToLaunch=false",
+    "[BADMINTON-DIAG] physics.resetTimer: phase=resetting resetTimer=0.57 pos=(-1.50,0.05,2.88) isReadyToLaunch=false",
+    "[BADMINTON-DIAG] physics.resetTimer: phase=resetting resetTimer=0.53 pos=(-1.50,0.05,2.88) isReadyToLaunch=false",
+    "[BADMINTON-DIAG] physics.resetTimer: phase=resetting resetTimer=0.50 pos=(-1.50,0.05,2.88) isReadyToLaunch=false",
+    "[BADMINTON-DIAG] physics.resetTimer: phase=resetting resetTimer=0.47 pos=(-1.50,0.05,2.88) isReadyToLaunch=false",
+    "[BADMINTON-DIAG] physics.resetTimer: phase=resetting resetTimer=0.43 pos=(-1.50,0.05,2.88) isReadyToLaunch=false",
+    "[BADMINTON-DIAG] physics.resetTimer: phase=resetting resetTimer=0.40 pos=(-1.50,0.05,2.88) isReadyToLaunch=false",
+    "[BADMINTON-DIAG] physics.resetTimer: phase=resetting resetTimer=0.37 pos=(-1.50,0.05,2.88) isReadyToLaunch=false",
+    "[BADMINTON-DIAG] physics.resetTimer: phase=resetting resetTimer=0.33 pos=(-1.50,0.05,2.88) isReadyToLaunch=false",
+    "[BADMINTON-DIAG] physics.resetTimer: phase=resetting resetTimer=0.30 pos=(-1.50,0.05,2.88) isReadyToLaunch=false",
+    "[BADMINTON-DIAG] physics.resetTimer: phase=resetting resetTimer=0.27 pos=(-1.50,0.05,2.88) isReadyToLaunch=false",
+    "[BADMINTON-DIAG] physics.resetTimer: phase=resetting resetTimer=0.23 pos=(-1.50,0.05,2.88) isReadyToLaunch=false",
+    "[BADMINTON-DIAG] physics.resetTimer: phase=resetting resetTimer=0.20 pos=(-1.50,0.05,2.88) isReadyToLaunch=false",
+    "[BADMINTON-DIAG] physics.resetTimer: phase=resetting resetTimer=0.17 pos=(-1.50,0.05,2.88) isReadyToLaunch=false",
+    "[BADMINTON-DIAG] physics.resetTimer: phase=resetting resetTimer=0.13 pos=(-1.50,0.05,2.88) isReadyToLaunch=false",
+    "[BADMINTON-DIAG] physics.resetTimer: phase=resetting resetTimer=0.10 pos=(-1.50,0.05,2.88) isReadyToLaunch=false",
+    "[BADMINTON-DIAG] physics.resetTimer: phase=resetting resetTimer=0.07 pos=(-1.50,0.05,2.88) isReadyToLaunch=false",
+    "[BADMINTON-DIAG] physics.resetTimer: phase=resetting resetTimer=0.03 pos=(-1.50,0.05,2.88) isReadyToLaunch=false",
+    "[BADMINTON-DIAG] physics.resetTimer: phase=resetting resetTimer=0.00 pos=(-1.50,0.05,2.88) isReadyToLaunch=false",
+    "[BADMINTON-DIAG] physics.reset: before phase=resetting pos=(-1.50,0.05,2.88) resetTimer=-0.02",
+    "[BADMINTON-DIAG] physics.reset: after phase=idle pos=(0.00,1.50,3.50) isReadyToLaunch=true",
+    "[BADMINTON-DIAG] update: physics phase changed resetting -> idle, pos=0.00,1.50,3.50, vel=0.00,0.00,0.00, rally=1, launch=1, src=official-serve",
+    "[BADMINTON-DIAG] update: POINT PAUSED — shuttle ditampilkan di tangan kiri server berikutnya (blue), tekan ENTER untuk servis",
+    "[BADMINTON-DIAG] tickAutoServe: selebrasi selesai, servis berikutnya otomatis server=blue, serveSide=left, status=playing",
+    "[BADMINTON-DIAG] update: pendingServe=true, isReadyToLaunch=true, hitTestMode=false, feedArmed=false, memulai persiapan official serve",
+    "[BADMINTON-DIAG] officialServe: persiapan server=blue serveSide=left clip=ServeShort kontak@0.867s, shuttle pindah ke tangan kiri server"
+  ]
+}

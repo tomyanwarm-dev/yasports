@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import { HALF_WIDTH } from './BadmintonCourt.ts'
+import { HALF_WIDTH } from './Court.ts'
 
 export const NET_HEIGHT = 1.524
 export const POST_HEIGHT = 1.55

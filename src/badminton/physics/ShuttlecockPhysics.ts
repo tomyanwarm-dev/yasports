@@ -56,6 +56,8 @@ export class BadmintonShuttlecockPhysics {
   private readonly resetPoint: THREE.Vector3
   private resetDelay: number
   private resetTimer = 0
+  /** [BADMINTON-DIAG] Sementara: waktu sampling terakhir untuk log resetTimer. */
+  private _diagLastSampleTime = 0
 
   private phase: ShuttlecockPhase = 'idle'
 
@@ -72,6 +74,10 @@ export class BadmintonShuttlecockPhysics {
   }
 
   launch(position: THREE.Vector3, velocity: THREE.Vector3): void {
+    // [BADMINTON-DIAG] Sementara: catatan tunggal untuk setiap pemanggilan launch.
+    console.info(
+      `[BADMINTON-DIAG] physics.launch: pos=(${position.x.toFixed(2)},${position.y.toFixed(2)},${position.z.toFixed(2)}) vel=(${velocity.x.toFixed(2)},${velocity.y.toFixed(2)},${velocity.z.toFixed(2)})`
+    )
     this.position.copy(position)
     this.velocity.copy(velocity)
     this.resetTimer = 0
@@ -80,13 +86,24 @@ export class BadmintonShuttlecockPhysics {
 
   /** Stops the flight and parks the shuttlecock at its reset point. */
   reset(position?: THREE.Vector3, velocity?: THREE.Vector3): void {
+    // [BADMINTON-DIAG] Sementara: posisi sebelum dan sesudah reset.
+    console.info(
+      `[BADMINTON-DIAG] physics.reset: before phase=${this.phase} pos=(${this.position.x.toFixed(2)},${this.position.y.toFixed(2)},${this.position.z.toFixed(2)}) resetTimer=${this.resetTimer.toFixed(2)}`
+    )
     this.position.copy(position ?? this.resetPoint)
     this.velocity.copy(velocity ?? ZERO)
     this.resetTimer = 0
     this.phase = 'idle'
+    console.info(
+      `[BADMINTON-DIAG] physics.reset: after phase=${this.phase} pos=(${this.position.x.toFixed(2)},${this.position.y.toFixed(2)},${this.position.z.toFixed(2)}) isReadyToLaunch=${this.isReadyToLaunch()}`
+    )
   }
 
   stop(): void {
+    // [BADMINTON-DIAG] Sementara: transisi flying -> resetting.
+    console.info(
+      `[BADMINTON-DIAG] physics.stop: phase ${this.phase} -> resetting, pos=(${this.position.x.toFixed(2)},${this.position.y.toFixed(2)},${this.position.z.toFixed(2)}) vel=(${this.velocity.x.toFixed(2)},${this.velocity.y.toFixed(2)},${this.velocity.z.toFixed(2)}) resetDelay=${this.resetDelay}`
+    )
     this.velocity.set(0, 0, 0)
     this.phase = 'resetting'
     this.resetTimer = this.resetDelay
@@ -94,30 +111,45 @@ export class BadmintonShuttlecockPhysics {
 
   /** Advances the flight and reports what happened this frame. */
   update(delta: number): ShuttlecockEvent {
-    const step = Math.min(Math.max(delta, 0), MAX_STEP)
-
     if (this.phase !== 'flying') {
       if (this.phase === 'resetting') {
-        this.resetTimer -= step
+        this.resetTimer -= Math.min(Math.max(delta, 0), MAX_STEP)
+        // [BADMINTON-DIAG] Sementara: sampling resetTimer maksimal tiap 500 ms.
+        const now = Date.now()
+        if (now - this._diagLastSampleTime >= 500) {
+          this._diagLastSampleTime = now
+          console.info(
+            `[BADMINTON-DIAG] physics.resetTimer: phase=${this.phase} resetTimer=${this.resetTimer.toFixed(2)} pos=(${this.position.x.toFixed(2)},${this.position.y.toFixed(2)},${this.position.z.toFixed(2)}) isReadyToLaunch=${this.isReadyToLaunch()}`
+          )
+        }
         if (this.resetTimer <= 0) this.reset()
       }
       return 'flying'
     }
 
-    // Exact integration for constant acceleration: frame-rate independent.
-    this.position.addScaledVector(this.velocity, step)
-    this.position.addScaledVector(this.gravityVector, 0.5 * step * step)
-    this.velocity.addScaledVector(this.gravityVector, step)
+    // Keep stable 100 ms collision/bounds checks without dropping elapsed
+    // simulation time on slow frames. Animation and input consume full delta.
+    let remaining = Math.max(delta, 0)
+    while (remaining > 0) {
+      const step = Math.min(remaining, MAX_STEP)
 
-    if (this.position.y <= this.groundY + this.groundThreshold) {
-      this.position.y = this.groundY + this.groundThreshold
-      this.stop()
-      return 'landed'
-    }
+      // Exact integration for constant acceleration in each substep.
+      this.position.addScaledVector(this.velocity, step)
+      this.position.addScaledVector(this.gravityVector, 0.5 * step * step)
+      this.velocity.addScaledVector(this.gravityVector, step)
 
-    if (this.isOutOfBounds()) {
-      this.stop()
-      return 'outOfBounds'
+      if (this.position.y <= this.groundY + this.groundThreshold) {
+        this.position.y = this.groundY + this.groundThreshold
+        this.stop()
+        return 'landed'
+      }
+
+      if (this.isOutOfBounds()) {
+        this.stop()
+        return 'outOfBounds'
+      }
+
+      remaining -= step
     }
 
     return 'flying'

@@ -292,6 +292,195 @@
   transform: translateX(-3px);
 }
 
+/* Scoreboard HUD Badminton - Broadcast style, kanan atas layar */
+.bb-hud {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  left: auto;
+  transform: none;
+  z-index: 30;
+  pointer-events: none;
+  width: min(290px, 90vw);
+}
+
+.bb-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 12px 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: linear-gradient(
+    180deg,
+    rgba(17, 30, 54, 0.9) 0%,
+    rgba(10, 18, 34, 0.88) 100%
+  );
+  backdrop-filter: blur(10px);
+  box-shadow:
+    0 10px 28px -6px rgba(2, 8, 23, 0.85),
+    inset 0 1px 0 rgba(147, 197, 253, 0.12);
+}
+
+.bb-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bb-row--main {
+  flex-direction: row;
+  justify-content: space-between;
+}
+
+.bb-side {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  min-width: 90px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.bb-side--red {
+  border-color: rgba(239, 68, 68, 0.35);
+}
+
+.bb-side--blue {
+  border-color: rgba(59, 130, 246, 0.35);
+}
+
+.bb-side--serving {
+  border-color: var(--accent-strong);
+  background: rgba(59, 130, 246, 0.18);
+  box-shadow: 0 0 0 1px rgba(96, 165, 253, 0.35);
+}
+
+.bb-name {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+
+.bb-score {
+  font-size: 1.9rem;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--text-strong);
+}
+
+.bb-games {
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: var(--cyan);
+}
+
+.bb-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  text-align: left;
+}
+
+.bb-game {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+
+.bb-serve {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--accent-strong);
+}
+
+.bb-row--interval {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px dashed var(--accent-strong);
+  border-radius: 6px;
+  background: rgba(59, 130, 246, 0.12);
+  color: var(--accent-strong);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  justify-content: center;
+}
+
+.bb-interval-timer {
+  font-size: 0.95rem;
+  font-weight: 800;
+  margin-left: 4px;
+}
+
+.bb-announce {
+  text-align: center;
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.bb-announce--game {
+  background: rgba(96, 165, 250, 0.15);
+  border: 1px solid rgba(96, 165, 250, 0.4);
+  color: var(--accent-strong);
+}
+
+.bb-announce--match {
+  background: rgba(34, 197, 94, 0.15);
+  border: 1px solid rgba(34, 197, 94, 0.4);
+  color: #4ade80;
+}
+
+@media (max-width: 640px) {
+  .bb-hud {
+    top: 10px;
+    right: 10px;
+    width: min(260px, 95vw);
+  }
+
+  .bb-panel {
+    padding: 6px 10px 8px;
+  }
+
+  .bb-side {
+    min-width: 75px;
+    padding: 3px 6px;
+  }
+
+  .bb-score {
+    font-size: 1.6rem;
+  }
+
+  .bb-name {
+    font-size: 0.6rem;
+  }
+
+  .bb-game {
+    font-size: 0.65rem;
+  }
+
+  .bb-serve {
+    font-size: 0.62rem;
+  }
+}
+
 @media (max-width: 480px) {
   .screen--gameplay {
     padding: 14px;

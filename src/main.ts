@@ -1,6 +1,6 @@
 import './style.css'
 import './menu/menu.css'
-import { BadmintonPrototype } from './badminton/BadmintonPrototype.ts'
+import { BadmintonPrototype } from './badminton/prototype/Prototype.ts'
 import { PingpongPrototype } from './pingpong/PingpongPrototype.ts'
 import { Game } from './core/Game.ts'
 import { GameState, Screen } from './core/GameState.ts'

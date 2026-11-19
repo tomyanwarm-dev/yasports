@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import { HALF_WIDTH } from './BadmintonCourt.ts'
+import { HALF_WIDTH } from '../court/Court.ts'
 
 /** Umpire chair stands beside the net post, outside the sideline. */
 const CHAIR_X = HALF_WIDTH + 0.95

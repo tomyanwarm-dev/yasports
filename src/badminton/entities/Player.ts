@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import { BadmintonRacket } from './BadmintonRacket.ts'
+import { BadmintonRacket } from './Racket.ts'
 
 /**
  * The player faces +Z, so its right side is -X and its left side is +X.

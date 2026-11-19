@@ -1,4 +1,17 @@
 import * as THREE from 'three'
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
+
+/** Public path of the shuttlecock asset (Tahap 2.4), served by Vite. */
+export const BADMINTON_SHUTTLECOCK_URL =
+  '/models/badminton/equipment/BadmintonShuttlecock.glb'
+
+/**
+ * Skala visual GLB. Audit GLB (Tahap 2.4): panjang model 0.0710 m sepanjang
+ * sumbu Y; spesifikasi shuttlecock game (dan model prosedural lama) 0.085 m.
+ * 0.085 / 0.0710 = 1.196 -> 1.2, sehingga ukuran visual identik dengan
+ * shuttlecock lama: natural dibanding tangan (~0.1 m) dan raket (~0.67 m).
+ */
+const SHUTTLE_MODEL_SCALE = 1.2
 
 /** Real shuttlecock size in metres: 0.085 long, 0.065 skirt diameter. */
 const TOTAL_LENGTH = 0.085
@@ -11,9 +24,20 @@ const UP = new THREE.Vector3(0, 1, 0)
 const FORWARD = new THREE.Vector3()
 
 /**
- * Procedural shuttlecock: cork head at the bottom, feather skirt on top.
- * Built from primitives only (no external model) and cheap enough to keep in
- * the scene permanently.
+ * Shuttlecock visual. Sejak Tahap 2.4 memakai model GLB
+ * (BadmintonShuttlecock.glb) menggantikan visual prosedural.
+ *
+ * Audit GLB (headless, Node + GLTFLoader):
+ *   - 56 node, 24 mesh, tanpa texture (material warna datar phong/lambert).
+ *   - Sumbu memanjang Y = 0.0710 m; cork di -Y (bawah), bulu di +Y (atas)
+ *     -> konvensi sama persis dengan model prosedural ("-Y = cork"), sehingga
+ *     logika orientasi lama tetap dipakai tanpa koreksi.
+ *   - Origin model di (0,0,0) tetapi geometri tergeser (pusat ~ +0.0251 Y);
+ *     pusat ulang dilakukan lewat holder agar pivot = titik physics.
+ *
+ * Selama GLB belum termuat, visual prosedural dipakai sebagai fallback;
+ * jika GLB gagal dimuat, error diagnostik ditampilkan dan fallback tetap
+ * dipakai (tidak dianggap sukses secara diam-diam).
  *
  * This class owns look and transform only. Flight behaviour lives in
  * BadmintonShuttlecockPhysics, so rendering stays independent of simulation.
@@ -22,19 +46,29 @@ export class BadmintonShuttlecock {
   readonly group = new THREE.Group()
 
   private readonly body = new THREE.Group()
+  /** Visual prosedural: fallback sampai GLB termuat (lalu dihapus dari body). */
+  private readonly procedural: THREE.Group
+  /** Visual GLB (null selama loading atau bila loading gagal). */
+  private glbVisual: THREE.Group | null = null
   private readonly targetQuaternion = new THREE.Quaternion()
   private velocity = new THREE.Vector3()
 
   constructor(parent?: THREE.Object3D) {
     this.group.name = 'shuttlecock'
     this.group.add(this.body)
-    this.body.add(
+
+    this.procedural = new THREE.Group()
+    this.procedural.name = 'shuttlecock-procedural'
+    this.procedural.add(
       this.createCork(),
       this.createCollar(),
       this.createSkirt(),
       this.createFeathers(),
       this.createTipRing(),
     )
+    this.body.add(this.procedural)
+
+    this.loadGlbVisual()
     parent?.add(this.group)
   }
 
@@ -67,6 +101,7 @@ export class BadmintonShuttlecock {
     }
 
     // Local -Y points at the cork, so up must oppose the travel direction.
+    // GLB juga ber-cork di -Y, jadi rumus ini berlaku untuk kedua visual.
     FORWARD.copy(this.velocity).normalize().negate()
     this.targetQuaternion.setFromUnitVectors(UP, FORWARD)
     this.body.quaternion.slerp(this.targetQuaternion, Math.min(delta * 12, 1))
@@ -84,6 +119,55 @@ export class BadmintonShuttlecock {
     this.group.traverse((object) => {
       if (object instanceof THREE.Mesh) object.geometry.dispose()
     })
+  }
+
+  /**
+   * Memuat visual GLB satu kali. Sukses: prosedural dihapus, GLB dipusatkan
+   * ulang pada pivot dan diskalakan. Gagal: error diagnostik keras, fallback
+   * prosedural dipertahankan.
+   */
+  private loadGlbVisual(): void {
+    new GLTFLoader().load(
+      BADMINTON_SHUTTLECOCK_URL,
+      (gltf) => {
+        if (this.glbVisual) return // satu shuttlecock GLB saja
+        const source = gltf.scene as THREE.Group
+
+        const box = new THREE.Box3().setFromObject(source)
+        const center = box.getCenter(new THREE.Vector3())
+        const dims = box.getSize(new THREE.Vector3())
+
+        // Pusatkan ulang pivot: geometri GLB tidak berpusat di (0,0,0).
+        const holder = new THREE.Group()
+        holder.name = 'shuttlecock-glb'
+        holder.position.set(-center.x, -center.y, -center.z)
+        holder.scale.setScalar(SHUTTLE_MODEL_SCALE)
+        holder.add(source)
+
+        let meshCount = 0
+        source.traverse((object) => {
+          if (object instanceof THREE.Mesh) {
+            object.castShadow = true
+            meshCount++
+          }
+        })
+
+        this.body.add(holder)
+        this.procedural.removeFromParent()
+        this.glbVisual = holder
+
+        console.info(
+          `[BADMINTON-DIAG] shuttlecock: GLB loaded url=${BADMINTON_SHUTTLECOCK_URL}, meshes=${meshCount}, dims=(${dims.x.toFixed(4)},${dims.y.toFixed(4)},${dims.z.toFixed(4)}) x${SHUTTLE_MODEL_SCALE}, center=((${center.x.toFixed(4)},${center.y.toFixed(4)},${center.z.toFixed(4)})) dipusatkan, orientasi cork=-Y (bawah) bulu=+Y (atas)`
+        )
+      },
+      undefined,
+      (error) => {
+        console.error(
+          `[BADMINTON-DIAG] shuttlecock: GAGAL memuat GLB url=${BADMINTON_SHUTTLECOCK_URL} — fallback visual prosedural tetap dipakai`,
+          error,
+        )
+      },
+    )
   }
 
   private createCork(): THREE.Mesh {

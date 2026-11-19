@@ -1,5 +1,5 @@
-import type { Game } from '../core/Game.ts'
-import { BadmintonArena } from './BadmintonArena.ts'
+import type { Game } from '../../core/Game.ts'
+import { BadmintonArena } from '../BadmintonArena.ts'
 
 /**
  * Mounts the badminton prototype on the shared renderer when the player
