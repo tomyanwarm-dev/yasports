@@ -22,6 +22,7 @@ import {
   type ServeClipName,
 } from './physics/ServeTrajectory.ts'
 import { selectRedShot, type ShotTechnique } from './controllers/RedShotSelector.ts'
+import type { RedReceptionPlan } from './controllers/RedReception.ts'
 import { BadmintonSwingInput } from './input/SwingInput.ts'
 import { HandGestureController } from './input/gesture/HandGestureController.ts'
 import type { MovementBounds } from './controllers/Movement.ts'
@@ -63,7 +64,8 @@ const RED_BOUNDS: MovementBounds = {
 }
 
 /** Posisi siap (home) AI Blue saat tidak mengejar shuttlecock. */
-const BLUE_HOME = new THREE.Vector3(0, 0, -3.2)
+// Center of Blue's playable half (between the net safety margin and baseline).
+const BLUE_HOME = new THREE.Vector3(0, 0, (BLUE_BOUNDS.minZ + BLUE_BOUNDS.maxZ) / 2)
 
 /** Scratch vectors reused when serving the practice feed. */
 const feedPosition = new THREE.Vector3()
@@ -82,6 +84,12 @@ const SERVE_CLIP: ServeClipName = 'ServeShort'
 
 /** Shuttlecock duduk di telapak tangan kiri: sedikit di atas node tangan. */
 const SERVE_HOLD_OFFSET_Y = 0.05
+
+/**
+ * Gate posisi Blue sebelum servis resmi dimulai. AI berhenti pada toleransi
+ * kedatangan ±0,25 m, jadi gate 0,30 m tidak boleh lebih ketat daripada itu.
+ */
+const SERVE_READY_DISTANCE = 0.3
 
 /** Jarak garis servis pendek dari net (sama dengan rumus serve lama). */
 const SHORT_SERVICE_LINE = 1.98
@@ -128,6 +136,28 @@ const PRACTICE_FEED = {
  * ENTER (Tahap 2.12).
  */
 const POST_CELEBRATION_WAIT_SECONDS = 1.0
+
+/**
+ * Timing assistance (Tahap 2.21). Time scale diterapkan ke seluruh simulasi
+ * (animasi, footwork, AI, physics, hit test, kamera), bukan ke konstanta
+ * gravity/radius. Besarnya sengaja konservatif dan hanya aktif beberapa saat
+ * menjelang intersepsi yang memang bisa dijangkau Red.
+ */
+const SLOW_MOTION_SCALE = 0.68
+/** Kecepatan transisi halus masuk/keluar slow motion (per detik nyata). */
+const SLOW_MOTION_ENTER_RATE = 4.5
+const SLOW_MOTION_EXIT_RATE = 2.5
+/**
+ * Jendela waktu prediksi sebelum kontak. Dibuka lebih awal dari 2.21 karena
+ * waktu terpakai untuk transisi halus + respons pemain memilih teknik.
+ */
+const SLOW_MOTION_LEAD_WINDOW = 0.45
+/**
+ * Gate jangkauan memakai jarak ke STANCE intersepsi, bukan jarak tubuh ke titik
+ * kontak. Jarak ke kontak baru kecil pada frame terakhir (~0,11 s) sehingga
+ * pemain tidak sempat merasakan pelambatan.
+ */
+const SLOW_MOTION_STANCE_REACH = 2.6
 
 /**
  * Badminton arena prototype: court, net, shuttlecock, two GLB players and the
@@ -194,6 +224,9 @@ export class BadmintonArena implements Stage {
   private landingRemaining = 0
   private jumping = false
   private lastHit: RacketHit | null = null
+  /** Time scale simulasi untuk timing assistance 2.21 (read-only di hook). */
+  private timeScale = 1
+  private slowMotionActive = false
 
   private _lastPhasePhysics: string | null = null
   private _lastPendingServe: boolean | null = null
@@ -275,26 +308,76 @@ export class BadmintonArena implements Stage {
     void this.loadModelPlayers()
   }
 
+  /** Target time scale untuk timing assistance; 1 = kecepatan normal. */
+  private slowMotionTarget(): number {
+    const physics = this.shuttlecockPhysics
+    if (physics.getPhase() !== 'flying') return 1
+    if (this.serveState !== 'idle' || this.pendingServe) return 1
+    if (this.pointCelebration?.isActive) return 1
+    if (!this.hitTestMode && this.awaitingServeEnter) return 1
+    if (physics.getVelocity().z <= 0.05) return 1
+
+    const plan = this.redController?.reception
+    if (!plan) return 1
+    // Pakai waktu intersepsi prediksi, bukan jarak mentah. Jendela ini hanya
+    // membuka beberapa ratus milidetik sebelum ayunan manual dibutuhkan.
+    if (plan.contactTime <= 0.04 || plan.contactTime > plan.lead + SLOW_MOTION_LEAD_WINDOW) return 1
+
+    const red = this.playerModelOf('red')
+    if (!red) return 1
+    // Auto positioning sedang membawa Red ke stance. Selama stance masih bisa
+    // dijangkau, perlambatan boleh mulai lebih awal; begitu stance tercapai
+    // slow motion sudah penuh dan pemain punya waktu memilih teknik.
+    const stanceDistance = Math.hypot(
+      plan.stanceX - red.group.position.x,
+      plan.stanceZ - red.group.position.z,
+    )
+    return stanceDistance <= SLOW_MOTION_STANCE_REACH ? SLOW_MOTION_SCALE : 1
+  }
+
+  /** Naik-turunkan time scale secara linier halus pada waktu nyata. */
+  private advanceTimeScale(delta: number): number {
+    const target = this.slowMotionTarget()
+    const rate = target < this.timeScale ? SLOW_MOTION_ENTER_RATE : SLOW_MOTION_EXIT_RATE
+    const step = rate * delta
+    const next = this.timeScale + THREE.MathUtils.clamp(target - this.timeScale, -step, step)
+    const active = next < 0.995
+    if (active !== this.slowMotionActive) {
+      this.slowMotionActive = active
+      console.info(
+        `[BADMINTON-DIAG] timing: slowMotion=${active} timeScale=${next.toFixed(3)} contactTime=${this.redController?.reception?.contactTime?.toFixed(3) ?? '-'}`
+      )
+    }
+    return next
+  }
+
   /** Advances the GLB animations, the controllers, then the gameplay camera. */
   update(delta: number): void {
+    // Gesture dibaca pada waktu nyata (MediaPipe/performance.now), tetapi semua
+    // simulasi memakai delta yang sudah diskalakan agar tetap sinkron.
+    const rawDelta = Math.max(0, delta)
+    this.timeScale = this.advanceTimeScale(rawDelta)
+    const scaledDelta = rawDelta * this.timeScale
+
     this.gestureController?.update()
-    this.redAnimController?.update(delta)
-    this.blueAnimController?.update(delta)
+    this.redAnimController?.update(scaledDelta)
+    this.blueAnimController?.update(scaledDelta)
     // Suap awareness shuttle hanya untuk footwork reaktif Red (SplitStep/Lunge).
     this.redController?.setShuttleAwareness(
       this.shuttlecockPhysics.getPosition(),
       this.shuttlecockPhysics.getVelocity(),
       this.shuttlecockPhysics.getPhase(),
+      this.shuttlecockPhysics.getGravity(),
     )
-    this.redController?.update(delta)
-    this.updateJump(delta)
-    this.blueAiController?.update(delta)
+    this.redController?.update(scaledDelta)
+    this.updateJump(scaledDelta)
+    this.blueAiController?.update(scaledDelta)
 
     // Physics selalu berjalan agar reset timer berjalan setelah shuttlecock
     // mendarat. Saat Practice Feed OFF, resetTimer akan habis dan phase menjadi
     // 'idle'; servis berikutnya tetap menunggu ENTER, tidak pernah otomatis
     // (Tahap 2.12).
-    const event = this.shuttlecockPhysics.update(delta)
+    const event = this.shuttlecockPhysics.update(scaledDelta)
 
     // Log perubahan phase physics
     const currentPhase = this.shuttlecockPhysics.getPhase()
@@ -338,9 +421,9 @@ export class BadmintonArena implements Stage {
       if (this.hitTestMode) this.feedArmed = true
     }
 
-    this.matchManager?.updateInterval(delta)
+    this.matchManager?.updateInterval(scaledDelta)
 
-    const hit = this.redHitDetection?.update(delta, this.shuttlecockPhysics.getPosition())
+    const hit = this.redHitDetection?.update(scaledDelta, this.shuttlecockPhysics.getPosition())
     // Selama official serve disiapkan (shuttle di tangan), kontak raket diabaikan
     // agar swing tidak memicu peluncuran kedua.
     if (hit && this.serveState === 'idle') {
@@ -351,7 +434,7 @@ export class BadmintonArena implements Stage {
     }
 
     // Pemeriksaan kontak raket Blue setiap frame (API dan pola sama dengan Red).
-    const blueHit = this.blueHitDetection?.update(delta, this.shuttlecockPhysics.getPosition())
+    const blueHit = this.blueHitDetection?.update(scaledDelta, this.shuttlecockPhysics.getPosition())
     if (blueHit && this.serveState === 'idle') {
       console.info(
         `[BADMINTON-DIAG] update: BLUE racket HIT detected! clip=${blueHit.clip} surfaceDistance=${blueHit.surfaceDistance.toFixed(4)}m speed=${blueHit.speed.toFixed(2)} pos=${blueHit.point.toArray().map((v) => v.toFixed(2)).join(',')}, velocity=${blueHit.velocity.toArray().map((v) => v.toFixed(2)).join(',')}`
@@ -362,7 +445,7 @@ export class BadmintonArena implements Stage {
     // Jeda pasca-selebrasi (Tahap 2.12): hitung mundur 1 detik setelah banner
     // benar-benar hilang. Fungsi ini hanya membuka gerbang ENTER; tidak pernah
     // memulai servis sendiri.
-    this.tickServeWait(delta)
+    this.tickServeWait(scaledDelta)
 
     // Official serve: gate mengonsumsi permintaan servis (pendingServe) yang
     // hanya datang dari tombol ENTER. Siklus servis resmi tetap satu jalur.
@@ -377,9 +460,9 @@ export class BadmintonArena implements Stage {
 
     if (this.serveState !== 'idle') {
       // Servis berlangsung: shuttle mengikuti tangan kiri server, bukan physics.
-      this.updateOfficialServe(delta)
+      this.updateOfficialServe(scaledDelta)
     } else if (
-      this.awaitingServeEnter &&
+      (this.awaitingServeEnter || this.pendingServe) &&
       this.shuttlecockPhysics.getPhase() === 'idle' &&
       !this.hitTestMode &&
       this.matchManager &&
@@ -412,7 +495,7 @@ export class BadmintonArena implements Stage {
       this.shuttlecock.setPosition(this.shuttlecockPhysics.getPosition())
       this.shuttlecock.setVelocity(this.shuttlecockPhysics.getVelocity())
     }
-    this.shuttlecock.update(delta)
+    this.shuttlecock.update(scaledDelta)
 
     // Temporary 2.10 browser driver: gives the test harness simulation-space
     // shuttle coordinates so Space can be triggered from the measured feed arc.
@@ -425,6 +508,39 @@ export class BadmintonArena implements Stage {
         hitTestMode: this.hitTestMode,
         serveState: this.serveState,
         serveElapsed: this.serveElapsed,
+      }
+    }
+
+    if (typeof window !== 'undefined') {
+      // Tahap 2.20A: hook diagnostik read-only untuk membedakan audit,
+      // simulasi, dan gameplay langsung. Objek produksi disertakan agar probe
+      // tidak memakai jalur collision tiruan.
+      ;(window as Window & { __badminton220?: unknown }).__badminton220 = {
+        arena: this,
+        physics: this.shuttlecockPhysics,
+        redController: this.redController,
+        redHitDetection: this.redHitDetection,
+        blueHitDetection: this.blueHitDetection,
+        blueAiController: this.blueAiController,
+        redAnimController: this.redAnimController,
+        blueAnimController: this.blueAnimController,
+        serve: {
+          pendingServe: this.pendingServe,
+          awaitingServeEnter: this.awaitingServeEnter,
+          serveState: this.serveState,
+          servePlayer: this.servePlayer,
+        },
+        reception: (this.redController?.reception ?? null) as RedReceptionPlan | null,
+        /** @deprecated Auto-swing nonaktif sejak 2.21; selalu 0. */
+        swingAttempts: this.redController?.automaticSwingAttempts ?? 0,
+        animation: this.redController?.animationState ?? null,
+        timing: {
+          timeScale: +this.timeScale.toFixed(3),
+          slowMotionActive: this.slowMotionActive,
+          contactTime: this.redController?.reception?.contactTime ?? null,
+        },
+        shuttlePosition: this.shuttlecockPhysics.getPosition().toArray(),
+        shuttleVelocity: this.shuttlecockPhysics.getVelocity().toArray(),
       }
     }
 
@@ -453,7 +569,7 @@ export class BadmintonArena implements Stage {
       this.launchPracticeFeed()
     }
 
-    this.playerCamera?.update(delta)
+    this.playerCamera?.update(scaledDelta)
   }
 
   /**
@@ -589,6 +705,95 @@ export class BadmintonArena implements Stage {
   }
 
   /**
+   * Arahkan hasil kontak Red kembali ke area Blue (Tahap 2.20A).
+   *
+   * Sama seperti `aimBlueVelocity`, ini hanya memilih arah setelah
+   * `RacketHitDetection` melaporkan kontak raket nyata; tidak memindahkan
+   * shuttle, tidak mengganti posisi kontak, dan tidak membuat pukulan palsu.
+   */
+  private aimRedVelocity(hit: RacketHit, origin: THREE.Vector3): THREE.Vector3 {
+    const blue = this.playerModelOf('blue')
+    const blueX = blue?.group.position.x ?? 0
+    const side = this._launchCounter % 2 === 0 ? -1 : 1
+    const targetX = THREE.MathUtils.clamp(blueX * 0.25 + side * 0.6, -1, 1)
+    const role = BadmintonArena.BLUE_SHOT_ROLES[hit.clip] ?? 'drive'
+    const depth =
+      role === 'net'
+        ? 2.0
+        : role === 'smash'
+          ? 2.6
+          : role === 'clear'
+            ? 3.2
+            : role === 'lift'
+              ? 3.3
+              : 2.8
+    const targetZ = -THREE.MathUtils.clamp(depth, 0.75, HALF_LENGTH - 0.6)
+
+    const gravity = this.shuttlecockPhysics.getGravity()
+    const solve = (dx: number, dz: number, speed: number, highArc: boolean): THREE.Vector3 | null => {
+      const distance = Math.hypot(dx, dz)
+      if (distance < 0.2) return null
+      const dy = 0.05 - origin.y
+      const a = (gravity * distance * distance) / (2 * speed * speed)
+      const disc = distance * distance - 4 * a * (dy + a)
+      if (disc < 0 || a <= 0) return null
+      const tan = highArc
+        ? (distance + Math.sqrt(disc)) / (2 * a)
+        : (distance - Math.sqrt(disc)) / (2 * a)
+      const cos = 1 / Math.sqrt(1 + tan * tan)
+      const horizontal = speed * cos
+      return new THREE.Vector3(
+        (dx / distance) * horizontal,
+        speed * tan * cos,
+        (dz / distance) * horizontal,
+      )
+    }
+
+    const clearsNet = (velocity: THREE.Vector3): boolean => {
+      if (velocity.z >= -0.05) return false
+      const t = origin.z / -velocity.z
+      if (t <= 0) return false
+      return origin.y + velocity.y * t - 0.5 * gravity * t * t > NET_HEIGHT + 0.12
+    }
+
+    // Blue butuh waktu untuk bereaksi dan berjalan ke stance penerimaan.
+    const MIN_REACH_TIME = 0.55
+    const reachTime = (velocity: THREE.Vector3): number => {
+      const disc = velocity.y * velocity.y - 2 * gravity * (1.5 - origin.y)
+      if (disc < 0) return 0
+      return (velocity.y + Math.sqrt(disc)) / gravity
+    }
+    const acceptable = (velocity: THREE.Vector3): boolean =>
+      clearsNet(velocity) && reachTime(velocity) >= MIN_REACH_TIME
+
+    let aimed: THREE.Vector3 | null = null
+    let x = targetX
+    for (let attempt = 0; attempt < 12 && !aimed; attempt++) {
+      const dx = x - origin.x
+      const dz = targetZ - origin.z
+      for (let speed = hit.speed; speed <= 12.5 && !aimed; speed += 0.5) {
+        const low = solve(dx, dz, speed, false)
+        if (low && acceptable(low)) {
+          aimed = low
+          break
+        }
+        const high = solve(dx, dz, speed, true)
+        if (high && acceptable(high)) {
+          aimed = high
+          break
+        }
+      }
+      if (!aimed) {
+        x = THREE.MathUtils.lerp(x, origin.x + Math.sign(x - origin.x) * 0.8, 0.12)
+      }
+    }
+
+    if (!aimed) return hit.velocity.clone()
+    aimed.clampLength(4.5, 14)
+    return aimed
+  }
+
+  /**
    * Replaces the shuttlecock velocity with the racket impulse. The shuttlecock
    * keeps the exact position it already had, so a hit never teleports it onto
    * the racket, and the pending feed is cancelled so the struck trajectory
@@ -599,7 +804,13 @@ export class BadmintonArena implements Stage {
     this._lastLaunchSource = player === 'red' ? 'applyHit-red' : 'applyHit-blue'
     this._rallyEndProcessed = false
     const origin = this.shuttlecockPhysics.getPosition().clone()
-    const outgoing = player === 'blue' ? this.aimBlueVelocity(hit, origin) : hit.velocity.clone()
+    const outgoing =
+      player === 'blue'
+        ? this.aimBlueVelocity(hit, origin)
+        : player === 'red' && !this.hitTestMode
+          ? this.aimRedVelocity(hit, origin)
+          : hit.velocity.clone()
+    if (player === 'red') this.redController?.noteSwingContact()
     console.info(
       `[BADMINTON-DIAG] applyHit: launch#${this._launchCounter} rally#${this._rallyCounter} src=${this._lastLaunchSource} player=${player} clip=${hit.clip} speed=${hit.speed.toFixed(2)} point=(${hit.point.x.toFixed(2)},${hit.point.y.toFixed(2)},${hit.point.z.toFixed(2)}) racketVel=(${hit.velocity.x.toFixed(2)},${hit.velocity.y.toFixed(2)},${hit.velocity.z.toFixed(2)}) outgoing=(${outgoing.x.toFixed(2)},${outgoing.y.toFixed(2)},${outgoing.z.toFixed(2)})`
     )
@@ -751,37 +962,42 @@ export class BadmintonArena implements Stage {
   }
 
   /**
-   * Space starts a swing. It never launches or moves the shuttlecock: the
-   * practice feed runs on its own cycle while hit test mode is enabled, so a
-   * press can only ever produce a hit through the real collision test.
+   * Satu-satunya jalur ayunan Red: Space (tanpa teknik) atau gesture
+   * (teknik hasil GestureRecognizer). Tidak ada argumen predictedContact /
+   * forcedClip lagi, jadi reception tidak bisa meminta ayunan lewat sini.
    *
-   * A false return from requestSwing means a swing is already running, so the
-   * press is simply ignored: playing Ready here would cut the running Forehand
-   * short. Returning to the stance is handled by BadmintonPlayerModel.update
-   * once the swing clip finishes.
+   * `requestSwing()` yang mengembalikan false berarti ayunan masih berjalan;
+   * input diabaikan agar tidak ada ayunan ganda.
    */
-  private onSwingInput = (technique?: ShotTechnique): void => {
+  private onSwingInput = (technique?: ShotTechnique): boolean => {
     console.info(
       `[BADMINTON-DIAG] onSwingInput dipanggil technique=${technique ?? 'keyboard'} shuttle=${this.shuttlecockPhysics.getPosition().toArray().map(v=>v.toFixed(3)).join(',')} phase=${this.shuttlecockPhysics.getPhase()}`
     )
-    const p = this.shuttlecockPhysics.getPosition()
-    const v = this.shuttlecockPhysics.getVelocity()
-    const model = this.playerModelOf('red')
-    const clip = model
-      ? selectRedShot({
-          shuttlePosition: p,
-          shuttleVelocity: v,
-          playerPosition: model.group.position,
-          playerYaw: model.group.rotation.y,
-          isJumping: this.jumping,
-          // Hint gesture hanya bias; geometri shuttle tetap menentukan teknik.
-          ...(technique ? { preferredTechnique: technique } : {}),
-        })
-      : undefined
-    const started = this.redHitDetection?.requestSwing(clip)
+    // Validasi teknik memakai titik intersepsi prediksi bila tersedia, supaya
+    // klip yang dipilih sesuai zona raket tempat Red sudah bersiap. Tanpa rencana
+    // (mis. practice feed awal), fallback ke posisi kok saat ini.
+    const plan = this.redController?.reception
+    const p = plan?.contact ?? this.shuttlecockPhysics.getPosition()
+    const clip = this.selectRedShotClip(p, technique)
+    const started = this.redHitDetection?.requestSwing(clip) ?? false
+    if (started) this.redController?.noteSwingStarted()
     console.info(
       `[BADMINTON-DIAG] onSwingInput clip=${clip} hasil=${started} shuttle=(${p.x.toFixed(2)},${p.y.toFixed(2)},${p.z.toFixed(2)})`
     )
+    return started
+  }
+
+  private selectRedShotClip(position: THREE.Vector3, technique?: ShotTechnique): PlayerClip | undefined {
+    const model = this.playerModelOf('red')
+    if (!model) return undefined
+    return selectRedShot({
+      shuttlePosition: position,
+      shuttleVelocity: this.shuttlecockPhysics.getVelocity(),
+      playerPosition: model.group.position,
+      playerYaw: model.group.rotation.y,
+      isJumping: this.jumping,
+      ...(technique ? { preferredTechnique: technique } : {}),
+    })
   }
 
   /** KeyT toggles the practice feed used to test hitting. */
@@ -917,7 +1133,9 @@ export class BadmintonArena implements Stage {
     // POINT PAUSED: poin sudah diberikan, banner + jeda sudah selesai — mulai
     // servis berikutnya dari server/sisi MatchManager terbaru.
     if (this.awaitingServeEnter) {
-      this.awaitingServeEnter = false
+      // Flag initelah yang menjaga shuttle tetap di tangan server sementara
+      // beginOfficialServe menunggu posisi/animasi. Ia baru dihapus setelah
+      // siklus servis benar-benar dimulai.
       this.pendingServe = true
       this.serveWaitRemaining = 0
       this._serveTimeoutRetries = 0
@@ -997,9 +1215,9 @@ export class BadmintonArena implements Stage {
       this.blueAiController?.setServeHold(true)
       const p = model.group.position
       const dist = Math.hypot(p.x - BLUE_HOME.x, p.z - BLUE_HOME.z)
-      if (dist > 0.08) {
+      if (dist > SERVE_READY_DISTANCE) {
         console.info(
-          `[BADMINTON-DIAG] officialServe: menunggu Blue di posisi siap servis (dist=${dist.toFixed(3)}m)`
+          `[BADMINTON-DIAG] officialServe: menunggu Blue di posisi siap servis (dist=${dist.toFixed(3)}m, gate=${SERVE_READY_DISTANCE.toFixed(2)}m)`
         )
         return
       }
@@ -1012,6 +1230,10 @@ export class BadmintonArena implements Stage {
       return
     }
     this.pendingServe = false
+    // ENTER sudah dikonsumsi dan siklus servis benar-benar dimulai. Menunda
+    // penghapusan flag ini sampai di sini mencegah deadlock saat Blue masih
+    // bergerak kestance dan shuttle tetap terlihat di tangan server.
+    this.awaitingServeEnter = false
 
     this.servePlayer = server
     this.serveState = 'holding'
@@ -1209,6 +1431,9 @@ export class BadmintonArena implements Stage {
     this.serveState = 'idle'
     this.servePlayer = null
     this.pendingServe = true
+    // Kembalikan status menunggu ENTER/servis agar visual shuttle tetap di
+    // tangan server dan gate tidak kehilangan konteks setelah abort.
+    this.awaitingServeEnter = true
     console.info(`[BADMINTON-DIAG] officialServe: dibatalkan (${reason}), pendingServe dipulihkan`)
   }
 
@@ -1370,7 +1595,7 @@ export class BadmintonArena implements Stage {
         BadmintonPlayerModel.load(BADMINTON_PLAYER_RED_URL),
       ])
 
-      blue.group.position.set(-0.9, 0, -4.6)
+      blue.group.position.copy(BLUE_HOME)
       red.group.position.set(0.9, 0, 4.6)
 
       blue.group.rotation.y = Math.PI
@@ -1389,6 +1614,8 @@ export class BadmintonArena implements Stage {
       this.redAnimController = redAnim
 
       // Human plays red from behind the net; blue is the AI opponent.
+      // 2.21: tidak ada `onAutomaticSwing`. Controller hanya positioning;
+      // ayunan datang dari Space/gesture lewat onSwingInput().
       this.redController = new BadmintonPlayerController(red.group, RED_BOUNDS, {}, redAnim)
       // Hit detection Blue: instance sendiri, objek/animasi/raket milik Blue.
       this.blueHitDetection = new BadmintonRacketHitDetection(blue, {}, blueAnim)
@@ -1403,23 +1630,19 @@ export class BadmintonArena implements Stage {
         requestSwing: (clip) => this.blueHitDetection?.requestSwing(clip) ?? false,
         home: BLUE_HOME,
         difficulty: 'normal',
-        // Persepsi siklus official serve Red (Tahap 2.13): titik jatuh target
-        // menurut aturan servis resmi. Aktif sejak rally berakhir (server
-        // sudah diketahui publik dari papan skor) sehingga AI sempat berjalan
-        // ke stance penerimaan sebelum shuttle diluncurkan.
+        // 2.20C: persepsi servis lawan memakai aturan servis resmi yang sama
+        // dengan `launchServeFromContact`, bukan data collision tiruan.
         servePerception: {
           getExpectedLanding: () => {
-            if (!this.matchManager) return null
-            if (this.matchManager.getServer() !== 'red') return null
-            if (this.shuttlecockPhysics.getPhase() === 'flying') return null
-            const isRight = this.matchManager.getServeSide() === 'right'
-            // Red menembak ke sisi Z negatif; diagonal mengikuti sisi servis.
-            const targetXSign = isRight ? 1 : -1
-            return new THREE.Vector3(
-              targetXSign * SERVE_TARGET_X,
-              0.05,
-              -(SHORT_SERVICE_LINE + SERVE_TARGET_DEPTH[SERVE_CLIP]),
-            )
+            const manager = this.matchManager
+            if (!manager || manager.isMatchOver() || this.hitTestMode) return null
+            if (manager.getServer() !== 'red') return null
+            // Sejak ENTER pertama status playing; beri waktu menyiapkan stance
+            // sebelum kontak raket servis (bukan hanya saat POINT PAUSED).
+            if (manager.getState().status !== 'playing') return null
+            if (this.shuttlecockPhysics.getPhase() !== 'idle') return null
+            const targetXSign = manager.getServeSide() === 'right' ? 1 : -1
+            return new THREE.Vector3(targetXSign * SERVE_TARGET_X, 0.05, -SERVE_TARGET_DEPTH[SERVE_CLIP])
           },
         },
       })

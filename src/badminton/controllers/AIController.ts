@@ -6,7 +6,7 @@ import type { PlayerClip } from '../entities/PlayerModel.ts'
 import type { ShuttlecockPhase } from '../physics/ShuttlecockPhysics.ts'
 import { rankBlueTechniques } from './BlueShotSelector.ts'
 
-export type AiMode = 'patrol' | 'intercept' | 'recover'
+export type AiMode = 'ready' | 'intercept' | 'recover'
 /** Nama lama dipertahankan agar impor luar tidak rusak. */
 export type AiState = AiMode
 export type AiDifficultyName = 'easy' | 'normal' | 'hard'
@@ -68,11 +68,6 @@ export const AI_BALANCE: Record<AiDifficultyName, AiBalance> = {
   },
 }
 
-const IDLE_MIN = 0.5
-const IDLE_MAX = 1.1
-const MOVE_MIN = 1.0
-const MOVE_MAX = 2.2
-
 /** Prediksi lintasan: horizon maksimum (detik). */
 const PREDICT_HORIZON = 2.5
 /** Dianggap sampai di titik target/home bila lebih dekat dari ini (meter). */
@@ -87,9 +82,6 @@ const HOME_TOLERANCE = 0.35
 // jadi Blue harus berhenti jauh lebih dekat ke stance ideal daripada
 // toleransi patroli biasa.
 const INTERCEPT_ARRIVE_TOLERANCE = 0.025
-/** Batas waktu maksimal mode recover sebelum kembali patroli. */
-const RECOVER_MAX = 2.5
-
 /** Kontak hanya dihitung di sisi Blue (shuttle sudah melewati bidang net). */
 const ZONE_SIDE_Z = -0.05
 /** Toleransi tinggi shuttle terhadap tinggi zona kontak klip (meter). */
@@ -98,10 +90,6 @@ const ZONE_HEIGHT_TOLERANCE = 0.07
 /** Jeda antar percobaan swing agar tidak spam saat shuttle masih dekat. */
 const SWING_RETRY_COOLDOWN = 0.9
 const SWING_BUSY_COOLDOWN = 0.35
-
-/** Radius patroli lateral di sekitar home, supaya AI tidak stray terlalu jauh. */
-const PATROL_RADIUS = 1.0
-const PATROL_DEPTH_RADIUS = 0.55
 
 /**
  * Waktu AI "membaca ulang" lintasan dengan gravitasi asli setelah bacaan awal
@@ -263,7 +251,7 @@ export interface BadmintonAIOptions {
   difficulty?: AiDifficultyName
   /** Override per parameter untuk balancing berikutnya. */
   balance?: Partial<AiBalance>
-  /** Persepsi siklus official serve (disediakan BadmintonArena). */
+  /** Persepsi siklus servis resmi lawan (disediakan BadmintonArena). */
   servePerception?: AiServePerception
 }
 
@@ -312,13 +300,13 @@ function descendingTime(
  * Controller AI untuk pemain Blue.
  *
  * Tiga mode:
- *   - patrol    : tidak ada ancaman; kembali ke sekitar home dan bergerak kecil.
- *   - intercept : shuttle/serve menuju Blue; bergerak ke stance yang membuat
+ *   - ready     : shuttle belum menuju Blue; diam di posisi home.
+ *   - intercept : shuttle terbang menuju Blue; bergerak ke stance yang membuat
  *                 zona kontak raket tepat berada di lintasan shuttle.
  *   - recover   : rally selesai; kembali ke home.
  *
- * Penerimaan servis memakai pipeline nyata: persepsi siklus servis resmi ->
- * antisipasi stance -> prediksi lintasan -> gerak -> pilih klip berdasarkan
+ * Penerimaan servis memakai pipeline nyata setelah shuttle diluncurkan:
+ * prediksi lintasan -> gerak -> pilih klip berdasarkan
  * zona raket terukur -> minta swing -> RacketHitDetection Blue menguji kontak
  * mesh raket (satu hit per swing). Tidak ada pemindahan shuttlecock.
  */
@@ -327,16 +315,12 @@ export class BadmintonAIController {
   private readonly bounds: MovementBounds
   private readonly balance: AiBalance
 
-  private mode: AiMode = 'patrol'
-  /** Sub-state patroli (perilaku lama, dipertahankan). */
-  private patrolState: 'idle' | 'moveLeft' | 'moveRight' = 'idle'
-  private timer = this.randomBetween(IDLE_MIN, IDLE_MAX)
+  private mode: AiMode = 'ready'
   private active = false
 
   private readonly interceptTarget = new THREE.Vector3()
   private readonly interceptOffset = new THREE.Vector3()
   private swingCooldown = 0
-  private recoverTimer = 0
 
   /** Status satu shuttle yang datang; error dibangkitkan sekali per shuttle. */
   private threatActive = false
@@ -365,11 +349,11 @@ export class BadmintonAIController {
   private lastPlanChangeElapsed = 0
   /** Sisa waktu gerak dibekukan saat ayunan berjalan (agar pose raket stabil). */
   private swingLockRemaining = 0
+  /** Aktif saat Blue menjadi server: AI diam di posisi siap servis, tidak patroli. */
+  private serveHoldActive = false
   /** Jeda reaksi terhadap persiapan servis resmi lawan. */
   private prepActive = false
   private prepReactionRemaining = 0
-  /** Aktif saat Blue menjadi server: AI diam di posisi siap servis, tidak patroli. */
-  private serveHoldActive = false
 
   /** Sisa durasi klip footwork reaktif Recovery / Jump / Landing (detik). */
   private recoveryAnimRemaining = 0
@@ -424,9 +408,7 @@ export class BadmintonAIController {
     this.jumpAnimRemaining = 0
     this.landingAnimRemaining = 0
     this.jumpUsedThisThreat = false
-    // Mode intercept memakai toleransi kedatangan ketat, sehingga posisi siap
-    // servis presisi (bukan toleransi patroli 0.25 m).
-    this.setMode('intercept')
+    this.setMode('ready')
     this.animationController?.stop()
   }
 
@@ -463,12 +445,12 @@ export class BadmintonAIController {
   private decideIntent(delta: number): MoveIntent {
     const shuttle = this.options.shuttle
     // Saat Blue menjadi server, satu-satunya tujuan adalah posisi siap servis.
-    // Tidak ada patroli, recover acak, atau anticipasi servis lawan.
+    // Tidak ada patroli atau recover acak; antisipasi hanya untuk servis lawan.
     if (this.serveHoldActive) {
       const home = this.options.home
-      return home ? this.moveToward(home) : { x: 0, z: 0 }
+      return home ? this.moveToward(home, delta) : { x: 0, z: 0 }
     }
-    if (!shuttle) return this.patrolIntent(delta)
+    if (!shuttle) return this.readyIntent(delta)
 
     const phase = shuttle.getPhase()
     const v = shuttle.getVelocity()
@@ -480,18 +462,17 @@ export class BadmintonAIController {
     if (!incoming) {
       if (this.threatActive) this.endThreat()
       this.plan = null
-      // Persiapan servis resmi lawan dievaluasi lebih dulu: penerimaan sudah
-      // boleh menggeser stance tanpa memicu log/lintasan recover tiap frame.
-      const prepTarget = this.planServeAnticipation(delta)
-      if (prepTarget) {
+      // Antisipasi servis resmi lawan: shuttle belum terbang, tetapi titik jatuh
+      // target sudah diketahui dari aturan servis. Tanpa ini jarak dari home
+      // ke stance DropShot tidak bisa ditempuh sebelum lead 0.167 s.
+      if (this.planServeAnticipation(delta)) {
         this.setMode('intercept')
-        return this.moveToward(this.interceptTarget)
+        return this.moveToward(this.interceptTarget, delta)
       }
       if (this.mode === 'intercept') {
         this.setMode('recover')
-        this.recoverTimer = RECOVER_MAX
       }
-      return this.mode === 'recover' ? this.recoverIntent(delta) : this.patrolIntent(delta)
+      return this.mode === 'recover' ? this.recoverIntent(delta) : this.readyIntent(delta)
     }
 
     if (!this.threatActive) this.beginThreat()
@@ -506,20 +487,21 @@ export class BadmintonAIController {
 
     if (this.planReception()) {
       this.setMode('intercept')
-      return this.moveToward(this.interceptTarget)
+      return this.moveToward(this.interceptTarget, delta)
     }
 
     if (this.mode === 'intercept') {
       this.setMode('recover')
-      this.recoverTimer = RECOVER_MAX
     }
-    return this.mode === 'recover' ? this.recoverIntent(delta) : this.patrolIntent(delta)
+    return this.mode === 'recover' ? this.recoverIntent(delta) : this.readyIntent(delta)
   }
 
   /** Mulai satu ancaman baru: reaction delay dan galat persepsi per shuttle. */
   private beginThreat(): void {
     this.threatActive = true
     this.threatElapsed = 0
+    this.prepActive = false
+    this.prepReactionRemaining = 0
     this.threatIndex += 1
     this.lockedClip = null
     this.lockedRole = undefined
@@ -572,9 +554,8 @@ export class BadmintonAIController {
 
   /**
    * Antisipasi siklus official serve lawan: sebelum shuttle diluncurkan, AI
-   * sudah bergerak ke stance penerimaan (net-front untuk servis pendek).
-   * Sumber data hanya persepsi publik: titik jatuh target menurut aturan
-   * servis resmi (target X + kedalaman + diagonal sisi servis).
+   * bergerak ke stance penerimaan yang sudah terukur (DropShot). Sumber data
+   * hanya persepsi publik: titik jatuh target sesuai aturan servis resmi.
    */
   private planServeAnticipation(delta: number): boolean {
     const perception = this.options.servePerception
@@ -602,23 +583,13 @@ export class BadmintonAIController {
       return false
     }
 
-    // Gunakan zona DropShot: satu-satunya klip yang reachability-nya nyaman
-    // untuk busur servis pendek (trigger 0.41 s setelah peluncuran).
     const zone = CLIP_ZONES.DropShot
     if (!zone) return false
-
-    // Titik lintasan menurun busur servis pendek resmi, terukur (probe 2.13C).
-    // Tanda x mengikuti sisi servis; geometri z identik untuk kedua sisi.
-    // Taksiran ini hanya untuk bersiap; koreksi eksak berlangsung setelah
-    // peluncuran dari velocity shuttle yang sudah terbaca.
-    const targetXSign = landing.x >= 0 ? 1 : -1
-    const crossX = targetXSign * SERVE_CROSS_X
-    const crossZ = SERVE_CROSS_Z
-
+    const crossX = (landing.x >= 0 ? 1 : -1) * SERVE_CROSS_X
     this.interceptTarget.set(
       THREE.MathUtils.clamp(crossX - zone.dx, this.bounds.minX, this.bounds.maxX),
       0,
-      THREE.MathUtils.clamp(crossZ - zone.dz, this.bounds.minZ, this.bounds.maxZ),
+      THREE.MathUtils.clamp(SERVE_CROSS_Z - zone.dz, this.bounds.minZ, this.bounds.maxZ),
     )
     return true
   }
@@ -647,9 +618,8 @@ export class BadmintonAIController {
     let contextContact: THREE.Vector3 | null = null
 
     // Servis resmi 2.13C tetap memakai zona DropShot lama. Sumber launch
-    // eksplisit lebih aman daripada `prepActive` (yang juga menyala saat
-    // menunggu servis berikutnya, sehingga secara keliru membuat rally
-    // memakai zona lama DropShot dan tidak pernah bervariasi).
+    // eksplisit membedakan servis dari rally; stance sudah disiap lebih awal
+    // oleh planServeAnticipation, jadi koreksi setelah launch tetap presisi.
     const launchSource = shuttle.getLaunchSource?.() ?? ''
     const serveReception = launchSource === 'official-serve' && this.threatElapsed < 0.9
 
@@ -841,7 +811,7 @@ export class BadmintonAIController {
   }
 
   /** Intent untuk bergerak ke titik dunia tertentu (nol bila sudah sampai). */
-  private moveToward(target: THREE.Vector3): MoveIntent {
+  private moveToward(target: THREE.Vector3, delta: number): MoveIntent {
     const dx = target.x - this.player.position.x
     const dz = target.z - this.player.position.z
     const distance = Math.hypot(dx, dz)
@@ -854,55 +824,43 @@ export class BadmintonAIController {
     const yaw = this.player.rotation.y
     const sin = Math.sin(yaw)
     const cos = Math.cos(yaw)
-    const wx = dx / distance
-    const wz = dz / distance
+    // Movement applies `speed * delta` per frame. Scale the final intent when
+    // the target is closer than one frame of travel so the AI lands on it
+    // instead of crossing it and reversing direction on the next frame.
+    const step = this.balance.movementSpeed * Math.max(0, delta)
+    const magnitude = step > 0 && distance < step ? distance / step : 1
+    const wx = (dx / distance) * magnitude
+    const wz = (dz / distance) * magnitude
     return { x: wx * cos - wz * sin, z: -wx * sin - wz * cos }
   }
 
-  /** Kembali ke posisi home, lalu lanjut patroli. */
+  /** Kembali ke posisi home, lalu menunggu di sana. */
   private recoverIntent(delta: number): MoveIntent {
     const home = this.options.home
     if (!home) {
-      this.setMode('patrol')
-      this.resetPatrol()
+      this.setMode('ready')
+      
       return { x: 0, z: 0 }
     }
-    this.recoverTimer -= delta
     const distance = Math.hypot(home.x - this.player.position.x, home.z - this.player.position.z)
-    if (distance <= HOME_TOLERANCE || this.recoverTimer <= 0) {
-      this.setMode('patrol')
-      this.resetPatrol()
+    if (distance <= HOME_TOLERANCE) {
+      this.setMode('ready')
+      
       return { x: 0, z: 0 }
     }
-    return this.moveToward(home)
+    return this.moveToward(home, delta)
   }
 
-  /** Patroli lama: jeda acak berganti arah kiri/kanan di sekitar home. */
-  private patrolIntent(delta: number): MoveIntent {
+  /** Posisi netral setelah shuttle berhenti mengancam: kembali ke home. */
+  private readyIntent(delta: number): MoveIntent {
     const home = this.options.home
-    if (home) {
-      const dx = this.player.position.x - home.x
-      const dz = this.player.position.z - home.z
-      // Jangan stray terlalu jauh dari posisi siap; ini juga membuat AI tidak
-      // otomatis mustahil menjangkau servis hanya karena patroli acak.
-      if (Math.abs(dx) > PATROL_RADIUS || Math.abs(dz) > PATROL_DEPTH_RADIUS) {
-        return this.moveToward(home)
-      }
-    }
-
-    this.timer -= delta
-    if (this.timer <= 0) this.chooseNextPatrolState()
-    return this.patrolCurrentIntent()
+    return home ? this.moveToward(home, delta) : { x: 0, z: 0 }
   }
 
-  private resetPatrol(): void {
-    this.patrolState = 'idle'
-    this.timer = this.randomBetween(IDLE_MIN, IDLE_MAX)
-  }
 
   private setMode(mode: AiMode): void {
     if (this.mode === mode) return
-    // Sesudah mengejar shuttle, putar Recovery singkat sebelum kembali patroli.
+    // Sesudah mengejar shuttle, putar Recovery singkat sebelum kembali ke home.
     if (mode === 'recover' && this.mode === 'intercept' && !this.serveHoldActive) {
       this.recoveryAnimRemaining = 0.45
     }
@@ -981,7 +939,8 @@ export class BadmintonAIController {
 
     let clip: PlayerClip
     if (!moving) {
-      anim.stop()
+      // stop() restarts the Ready clip; only do so when changing clips.
+      if (anim.playingClip !== 'Ready') anim.stop()
       return
     }
     if (Math.abs(intent.x) >= Math.abs(intent.z)) {
@@ -1045,31 +1004,6 @@ export class BadmintonAIController {
     } else {
       // Swing sedang berjalan; coba lagi setelah jeda pendek.
       this.swingCooldown = SWING_BUSY_COOLDOWN
-    }
-  }
-
-  private patrolCurrentIntent(): MoveIntent {
-    if (this.patrolState === 'moveLeft') return { x: -1, z: 0 }
-    if (this.patrolState === 'moveRight') return { x: 1, z: 0 }
-    return { x: 0, z: 0 }
-  }
-
-  private chooseNextPatrolState(): void {
-    switch (this.patrolState) {
-      case 'idle':
-        this.patrolState = Math.random() < 0.5 ? 'moveLeft' : 'moveRight'
-        this.timer = this.randomBetween(MOVE_MIN, MOVE_MAX)
-        break
-      case 'moveLeft':
-      case 'moveRight':
-        if (Math.random() < 0.35) {
-          this.patrolState = 'idle'
-          this.timer = this.randomBetween(IDLE_MIN, IDLE_MAX)
-        } else {
-          this.patrolState = this.patrolState === 'moveLeft' ? 'moveRight' : 'moveLeft'
-          this.timer = this.randomBetween(MOVE_MIN, MOVE_MAX)
-        }
-        break
     }
   }
 

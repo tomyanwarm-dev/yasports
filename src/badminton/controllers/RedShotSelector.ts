@@ -87,11 +87,40 @@ export function selectRedShot(input: RedShotInput): PlayerClip {
     return isForehand ? 'ForehandDrive' : 'BackhandDrive'
   }
   if (pref === 'block' && distance < 2.4) return 'DefensiveBlock'
-  if (distance < 1.9 && s.y < 1.45) {
+  // Kontak drive hasil kalibrasi berada di tinggi 1,5-1,65 m. Batas lama
+  // 1,45 m membuat hampir semua pukulan menengah dekat salah terklasifikasi
+  // sebagai Clear, sehingga lead/zone reception tidak cocok.
+  if (distance < 1.9 && s.y < 1.75) {
     return isForehand ? 'ForehandDrive' : 'BackhandDrive'
   }
   if (!incoming && distance < 1.6) return 'DefensiveBlock'
   return isForehand ? 'ForehandClear' : 'BackhandClear'
+}
+
+/**
+ * Waktu dari requestSwing sampai kontak raket nyata untuk sebuah klip Red.
+ *
+ * Angka-angka ini berasal dari kalibrasi sweep collision 2.16B dengan GLB Red:
+ * shuttle diparkir pada permukaan raket hasil sweep, ayunan asli dilepaskan,
+ * lalu `RacketHit.clipTime` saat kontak sah dicatat. Memakai lead klip yang
+ * tepat mencegah ayunan dimulai terlalu awal/terlambat terhadap prediksi
+ * intersepsi.
+ */
+export function swingLeadForClip(clip: PlayerClip | undefined): number {
+  switch (clip) {
+    case 'ForehandDrive':
+    case 'BackhandDrive':
+    case 'NetShot':
+    case 'NetKill':
+    case 'DropShot': return 0.12
+    case 'BackhandClear':
+    case 'Smash':
+    case 'JumpSmash': return 0.17
+    case 'ForehandClear': return 0.27
+    case 'Lift': return 0.35
+    case 'DefensiveBlock': return 0.6
+    default: return 0.2
+  }
 }
 
 /** Teknik footwork untuk lunge berdasarkan sisi shuttle (lokal Red). */
